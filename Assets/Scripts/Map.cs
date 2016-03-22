@@ -7,6 +7,8 @@ public class Map : MonoBehaviour {
     public int Seed = 0;
     public bool ReGen = false, IncSeed = false;
 
+    public bool FixLayers = false;
+
     public float Width = 20, Height = 20;
 
 	// Use this for initialization
@@ -17,6 +19,22 @@ public class Map : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 
+        if(FixLayers) {
+
+            for( int i = 30; i-- > 0; ) {
+                for( int j = i; j-- > 0; ) {
+                    Physics2D.IgnoreLayerCollision(i, j, true);
+                }
+                Physics2D.IgnoreLayerCollision(i, i, true );
+
+                int i2 = (i &1) == 0 ? i+1 : i-1;
+                Physics2D.IgnoreLayerCollision(i, i2, false);
+                Physics2D.IgnoreLayerCollision(i, 31, false);
+            }
+            
+
+            FixLayers = false;
+        }
         if(IncSeed) {
             Seed++;
             IncSeed = false;
@@ -229,7 +247,7 @@ public class Map : MonoBehaviour {
         for(int i = Spurs, j = 0; i-- > 0; j = i) {
 
             Vector2 p1 = spurs[i, 1], p2 = spurs[j, 2], p3 = spurs[i, 3], p4 = spurs[j, 4];
-            float inst = 0.72f;
+            float inst = 0.62f;
             p1 = (p3*0.3f + p1 * inst) ;
             p2 = (p4 * 0.3f + p2 * inst) ;
             subBox(p1, p2, p3, p4, 0.5f, M2);
