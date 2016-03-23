@@ -16,7 +16,11 @@ public class AiTankController : MonoBehaviour {
 
         Input = new float[2 + Motor.Scanner.Count];
 
-        int[] layers = { Input.Length, 20, 20, 2 };
+
+    }
+    public void init() {
+
+        int[] layers = { Input.Length, 16, 8, 4, 2 };
         try {
             var r = Random.value; //lazy..
             NN = new NeuralNetwork.Network(layers, true, Random.seed);
@@ -24,10 +28,12 @@ public class AiTankController : MonoBehaviour {
             Debug.LogError("NN err: " + e.Message);
         }
     }
+    public void init(NeuralNetwork.Network nn) {
+        NN = nn;
+    }
 
-    
     void FixedUpdate() {
-
+        if(NN == null) init();
         int inI = 0;
         Input[inI++] = Motor.Out_Vel.x;
         Input[inI++] = Motor.Out_Vel.y;
@@ -36,6 +42,8 @@ public class AiTankController : MonoBehaviour {
         }
 
         try {
+
+
             var output = NN.Compute(Input);
             Motor.In_LeftMv = output[0];
             Motor.In_RightMv = output[1];

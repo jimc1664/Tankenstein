@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class Test : MonoBehaviour {
     
@@ -8,18 +9,19 @@ public class Test : MonoBehaviour {
 
     public GameObject TankFab;
 
+    public int ArenaCnt = 1;
     public int Sample = 5;
     public float MaxTime = 10;
 
     public bool Vs = false;
 
-    public Transform Start1 , Start2;
+    public List<Transform> Start1 , Start2;
 
     public bool Pause = false, Accel = false;
     public float AccelFactor = 20;
 
-
-    public MovementScorer[] Tanks;
+    public NeuralNetwork.Network[] Nets;
+    public MovementScorer[,] Tanks;
     public float Timer = 0;
 
 
@@ -33,11 +35,9 @@ public class Test : MonoBehaviour {
         public AiTankController Ctrl;
 
 
-        public float getFullScore( ) {
-             return Score - Mathf.Abs(AV) * 0.00001f;
-        }
-        public float Score = 0;
+        public float Vel = 0;
         public float AV = 0;
+        public float Score = 0;
 
         Vector2[] PosList = new Vector2[20];
         int PLi = -1;
@@ -54,11 +54,15 @@ public class Test : MonoBehaviour {
             Skip = 5;
             var np = Motor.Body.position;
 
-            float dirFactor = 0.3f;
-            Score += (np - PosList[PLi] ).magnitude
+            float dirFactor = 0.7f;
+            Vel += (np - PosList[PLi] ).magnitude
                 * (1.0f - dirFactor + Mathf.Sign(Vector2.Dot(Motor.Body.velocity, Motor.Forward)) * dirFactor);
             PosList[PLi] = np;
+
+
             PLi = (PLi + 1) % PosList.Length;
+
+            Score = Vel - Mathf.Abs(AV) * 0.01f;
         }
 
         public void reset(Transform t) {
@@ -77,34 +81,83 @@ public class Test : MonoBehaviour {
             Destroy( t.gameObject );
 
         Sample = Mathf.Max(Sample, 3);
-        Tanks = new MovementScorer[Sample];
-        for(int i = Sample; i-- >0; ) {
-            Tanks[i] = Instantiate(TankFab).AddComponent<MovementScorer>();
-        }
+        ArenaCnt = Mathf.Clamp(ArenaCnt, 1, Start1.Count);
+        Tanks = new MovementScorer[Sample, ArenaCnt ];
+        for(int j =0; j < ArenaCnt; j++) 
+            for(int i = Sample; i-- >0; ) {
+                Tanks[i,j] = Instantiate(TankFab).AddComponent<MovementScorer>();
+                if( j == 0)
+                    Tanks[i, j].Ctrl.init();
+                else
+                    Tanks[i, j].Ctrl.init(Tanks[i,0].Ctrl.NN );
+            }
         reset();
     }
 
     void reset() {
 
-        var ot = Tanks;
 
+        int ac = Tanks.GetLength(1);
         Sample = Mathf.Max(Sample, 3);
-        if(Sample != Tanks.Length) {            
-            Tanks = new MovementScorer[Sample];
-            if(ot.Length > Sample) {
-                for(int i = Sample; i-- > 0; ) Tanks[i] = ot[i];
+        if(Sample != Tanks.GetLength(0)) {
+            Debug.Log("change sample " + Sample + "__" + Tanks.GetLength(0));
+            var ot = Tanks;
+            Tanks = new MovementScorer[Sample, ac];
+            for(int j = 0; j < ac; j++) {
+                if(ot.GetLength(0) > Sample) {
 
-                for(int i = ot.Length; i-- > Sample; )
-                    Destroy(ot[i].gameObject);
-            } else {
-                for(int i = ot.Length; i-- > 0; ) Tanks[i] = ot[i];
-                for(int i = Sample; i-- > ot.Length; )
-                    Tanks[i] = Instantiate(TankFab).AddComponent<MovementScorer>();
+                    for(int i = Sample; i-- > 0;) Tanks[i, j] = ot[i, j];
+
+                    for(int i = ot.GetLength(0); i-- > Sample;)
+                        Destroy(ot[i, j].gameObject);
+                } else {
+                    for(int i = ot.GetLength(0); i-- > 0;) Tanks[i, j] = ot[i, j];
+                    for(int i = Sample; i-- > ot.GetLength(0);) {
+                        Tanks[i, j] = Instantiate(TankFab).AddComponent<MovementScorer>();
+                        if(j == 0)
+                            Tanks[i, j].Ctrl.init();
+                        else
+                            Tanks[i, j].Ctrl.init(Tanks[i, 0].Ctrl.NN);
+                    }
+                }
             }
         }
 
-        foreach(var t in Tanks) 
-            t.reset(Start1);
+        ArenaCnt = Mathf.Clamp(ArenaCnt, 1, Start1.Count);
+        if(ac != ArenaCnt ) {
+            Debug.Log("change ArenaCnt " + ArenaCnt + "__" + Tanks.GetLength(1));
+            var ot = Tanks;
+            Tanks = new MovementScorer[Sample, ArenaCnt];
+
+
+            
+            if(ac > ArenaCnt) {
+
+                for(int j = ArenaCnt; j-- > 0;)
+                    for(int i = Sample; i-- > 0;)
+                        Tanks[i, j] = ot[i, j];
+                for(int j = ac; j-- > ArenaCnt;)
+                    for(int i = Sample; i-- > 0;) 
+                        Destroy(ot[i, j].gameObject);
+            } else {
+                for(int j = ac; j-- > 0;)
+                    for(int i = Sample; i-- > 0;)
+                        Tanks[i, j] = ot[i, j];
+
+
+                for(int j = ArenaCnt; j-- > ac;)
+                    for(int i = Sample; i-- > 0;) {
+                        Tanks[i, j] = Instantiate(TankFab).AddComponent<MovementScorer>();
+                        Tanks[i, j].Ctrl.init(Tanks[i, 0].Ctrl.NN);
+                    }
+            }
+            
+        }
+
+
+        for(int j = ArenaCnt; j-- > 0;)
+            for(int i = Sample; i-- > 0;)
+                Tanks[i, j].reset(Start1[j]);
 
         Timer = MaxTime;
     }
@@ -115,7 +168,7 @@ public class Test : MonoBehaviour {
         if(Pause)
             Time.timeScale = 0;
         else if(Accel)
-            Time.timeScale = 10;
+            Time.timeScale = AccelFactor;
         else
             Time.timeScale = 1;
     }
@@ -126,25 +179,50 @@ public class Test : MonoBehaviour {
 
         GenerationCounter++;
 
+        MovementScorer best = Tanks[Tanks.GetLength(0) - 1,0];
+
+        for( int j = Tanks.GetLength(1); --j >0; ) 
+            for( int i = Tanks.GetLength(0); i-- > 0;) {
+                Tanks[i, 0].Score += Tanks[i, j].Score;
+            }
+
         if (LastBest != null) {
             LastBest.Score *= 0.5f;
+            for (int i = Tanks.GetLength(0) - 1; i-- > 0;) {
+                var t = Tanks[i, 0];
+                if (t.Score > best.Score)
+                    best = t;
+            }
+        } else {
+            LastBest = Tanks[Tanks.GetLength(0) - 2, 0];
+            if( LastBest.Score > best.Score ) {
+                LastBest = Tanks[Tanks.GetLength(0) - 1, 0];
+                best = Tanks[Tanks.GetLength(0) - 2, 0];
+            }
+
+            for (int i = Tanks.GetLength(0) - 1; i-- > 0;) {
+                var t = Tanks[i, 0];
+                if (t.Score > LastBest.Score)
+                    if (t.Score > best.Score) {
+                        LastBest = best;
+                        best = t;
+                    }  else
+                        LastBest = t;
+
+            }
+
         }
 
-        MovementScorer best = Tanks[Tanks.Length - 1];
-        float scr = best.getFullScore();
-        for( int i = Tanks.Length-1; i-- >0; ) {
-            var t = Tanks[i];
-            if(t.getFullScore() > scr )
-                best = t;
-        }
         Debug.Log("best " + best.Score);
         reset();
 
-        if( LastBest== null ) LastBest = best;
-
-        foreach(var t in Tanks) {
+        for(int i = Tanks.GetLength(0) - 1; i-- > 0;) {
+            var t = Tanks[i, 0];
             if(t == best || t == LastBest) continue;
-            geneticOptimisation( t,  (Random.value > 0.5f) ? best : LastBest  );
+            var mix = (Random.value > 0.5f) ? best : LastBest;
+          //  if(t == best) mix = LastBest;
+           // else if(t == LastBest) mix = best;
+            geneticOptimisation( t,  mix );
         }
         LastBest = best;
 
@@ -156,14 +234,14 @@ public class Test : MonoBehaviour {
        // if( n1 != n2 ) 
             for(int layer = n1.Neurons.Length; --layer > 0; ) {
                 int nl = n1.Neurons[layer].Length;
-                for(int ri = Mathf.CeilToInt((float)nl * Random.Range(0.5f, 0.8f)  ); ri-- > 0; ) {
+                for(int ri = Mathf.CeilToInt((float)nl * Random.Range(0.7f, 0.9f)  ); ri-- > 0; ) {
                     int ni = Random.Range(0, nl);  //chance of duplicate - i suspect tracking this would be more cost than worth
                     n1.Neurons[layer][ni].bias = n2.Neurons[layer][ni].bias;
                 }
                 var s1 = n1.Synapsis[layer - 1];
                 var s2 = n2.Synapsis[layer - 1];
                 int sl = s1.Length;
-                for(int ri = Mathf.CeilToInt((float)s1.Length * Random.Range(0.5f, 0.8f) ); ri-- > 0; ) {
+                for(int ri = Mathf.CeilToInt((float)s1.Length * Random.Range(0.7f, 0.9f) ); ri-- > 0; ) {
                     int si = Random.Range(0, s1.Length);  //chance of duplicate - i suspect tracking this would be more cost than worth
                     s1[si].weight = s2[si].weight;
                 }

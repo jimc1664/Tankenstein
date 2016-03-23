@@ -51,8 +51,10 @@ public class Map : MonoBehaviour {
     void subBox(Vector2 _a, Vector2 _b, Vector2 _c, Vector2 _d, float h, Material m) {
         Vector3 a = _a, b = _b, c = _c, d = _d;
         var go = new GameObject();
+        go.layer = gameObject.layer;
         var t = go.transform;
         t.parent = transform;
+        t.localPosition = Vector3.zero;
         var mf = go.AddComponent<MeshFilter>();
         var mr = go.AddComponent<MeshRenderer>();
         mr.sharedMaterial = m;
@@ -116,8 +118,10 @@ public class Map : MonoBehaviour {
     void box(Vector2 _a, Vector2 _b, Vector2 _c, Vector2 _d, float h, Material m) {
         Vector3 a = _a, b = _b, c = _c, d = _d;
         var go = new GameObject();
+        go.layer = gameObject.layer;
         var t = go.transform;
         t.parent = transform;
+        t.localPosition = Vector3.zero;
         var mf = go.AddComponent<MeshFilter>();
         var mr = go.AddComponent<MeshRenderer>();
         mr.sharedMaterial = m;
