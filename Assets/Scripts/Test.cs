@@ -24,6 +24,7 @@ public class Test : MonoBehaviour {
     public MovementScorer[,] Tanks;
     public float Timer = 0;
 
+    public bool UseJimCast = true;
 
     //make base 'Scorer' class out of this...
     public class MovementScorer : MonoBehaviour {
@@ -76,6 +77,19 @@ public class Test : MonoBehaviour {
         }
     };
 
+    void initTank( int i, int j ) {
+
+        Tanks[i, j] = Instantiate(TankFab).AddComponent<MovementScorer>();
+        if(j == 0)
+            Tanks[i, j].Ctrl.init();
+        else
+            Tanks[i, j].Ctrl.init(Tanks[i, 0].Ctrl.NN);
+
+        var scn = Tanks[i, j].GetComponent<ScannerHlpr>();
+
+        scn.Area = Start1[j].GetComponentInParent<Arena>();
+        scn.init();
+    }
     void OnEnable() {
         foreach( var t in FindObjectsOfType<AiTankController>() ) 
             Destroy( t.gameObject );
@@ -85,14 +99,11 @@ public class Test : MonoBehaviour {
         Tanks = new MovementScorer[Sample, ArenaCnt ];
         for(int j =0; j < ArenaCnt; j++) 
             for(int i = Sample; i-- >0; ) {
-                Tanks[i,j] = Instantiate(TankFab).AddComponent<MovementScorer>();
-                if( j == 0)
-                    Tanks[i, j].Ctrl.init();
-                else
-                    Tanks[i, j].Ctrl.init(Tanks[i,0].Ctrl.NN );
+                initTank(i, j);
             }
         reset();
     }
+
 
     void reset() {
 
@@ -113,11 +124,7 @@ public class Test : MonoBehaviour {
                 } else {
                     for(int i = ot.GetLength(0); i-- > 0;) Tanks[i, j] = ot[i, j];
                     for(int i = Sample; i-- > ot.GetLength(0);) {
-                        Tanks[i, j] = Instantiate(TankFab).AddComponent<MovementScorer>();
-                        if(j == 0)
-                            Tanks[i, j].Ctrl.init();
-                        else
-                            Tanks[i, j].Ctrl.init(Tanks[i, 0].Ctrl.NN);
+                        initTank(i, j);
                     }
                 }
             }
@@ -147,8 +154,7 @@ public class Test : MonoBehaviour {
 
                 for(int j = ArenaCnt; j-- > ac;)
                     for(int i = Sample; i-- > 0;) {
-                        Tanks[i, j] = Instantiate(TankFab).AddComponent<MovementScorer>();
-                        Tanks[i, j].Ctrl.init(Tanks[i, 0].Ctrl.NN);
+                        initTank(i, j);
                     }
             }
             

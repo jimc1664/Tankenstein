@@ -32,6 +32,7 @@ public class TankMotor : MonoBehaviour {
     public float BaseRange = 10;
     public float ScannerSkewDir = 0.6f;
     public float ScannerSkewRange = 0.8f;
+    ScannerHlpr ScanH;
 
     //estimate - cos too lazy to calculate...
     public float EffMaxSpeed = 15;
@@ -51,13 +52,16 @@ public class TankMotor : MonoBehaviour {
 
     int LayerMask;
 
+    Test Tst;
     void OnEnable() {
         Trnsfrm = transform;
         Body = GetComponent<Rigidbody2D>();
-
+        ScanH = GetComponent<ScannerHlpr>();
         setLayer(gameObject.layer);
 
         reset(Trnsfrm);
+
+        Tst = FindObjectOfType<Test>();
     }
 
     public void reset( Transform t ) {
@@ -78,9 +82,8 @@ public class TankMotor : MonoBehaviour {
         LayerMask = (1 << l) | (1 << 31); 
     }
 
-    void outputs() {
+    public bool UseJimCast = true;
 
-    }
     void FixedUpdate() {
         Vector2 fwd = Trnsfrm.up, right = Trnsfrm.right, pos = Body.position, vel = Body.velocity, turretFwd = Turret.forward;
         
@@ -92,15 +95,20 @@ public class TankMotor : MonoBehaviour {
         Out_TurretDir = (Vector2)Trnsfrm.InverseTransformDirection(turretFwd);
         Out_RoFTimer = Mathf.Max(RoFTimer / RoF, -1);
 
-        foreach(var r in Scanner) {
-            var hit = Physics2D.Raycast(pos,Trnsfrm.TransformDirection( r.Dir ), r.RangeMod * BaseRange, LayerMask);
-            if(hit.collider != null) {
+        if(Tst != null) UseJimCast = Tst.UseJimCast;
+        if(UseJimCast) {
+            ScanH.proc();
+        } else {
+            foreach(var r in Scanner) {
+                var hit = Physics2D.Raycast(pos, Trnsfrm.TransformDirection(r.Dir), r.RangeMod * BaseRange, LayerMask);
+                if(hit.collider != null) {
 
-                r.Out_Dis = hit.fraction;
-                //if is other tank...
-                //...do stuff
-            } else
-                r.Out_Dis = 1;
+                    r.Out_Dis = hit.fraction;
+                    //if is other tank...
+                    //...do stuff
+                } else
+                    r.Out_Dis = 1;
+            }
         }
 
         RightMtr = Mathf.Lerp(RightMtr, In_RightMv, (Mathf.Abs(RightMtr) > In_RightMv * Mathf.Sign(RightMtr) ? DeAcceleration : Acceleration) * Time.deltaTime);
