@@ -15,9 +15,15 @@ public class AiTankController : MonoBehaviour {
         Motor = GetComponent<TankMotor>();
 
         Input = new float[2 + Motor.Scanner.Count];
-
-
+        if(!Test.IsTesting)
+            init();
+        Sys.get().add(this);
     }
+    void OnDisable() {
+        if(Sys.get())
+            Sys.get().Ais.Remove(this);
+    }
+
     public void init() {
 
         int[] layers = { Input.Length, 16, 8, 4, 2 };
@@ -32,8 +38,7 @@ public class AiTankController : MonoBehaviour {
         NN = nn;
     }
 
-    void FixedUpdate() {
-        if(NN == null) init();
+    public void aFixedUpdate() {
         int inI = 0;
         Input[inI++] = Motor.Out_Vel.x;
         Input[inI++] = Motor.Out_Vel.y;
@@ -42,8 +47,6 @@ public class AiTankController : MonoBehaviour {
         }
 
         try {
-
-
             var output = NN.Compute(Input);
             Motor.In_LeftMv = output[0];
             Motor.In_RightMv = output[1];

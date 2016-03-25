@@ -32,7 +32,9 @@ public class TankMotor : MonoBehaviour {
     public float BaseRange = 10;
     public float ScannerSkewDir = 0.6f;
     public float ScannerSkewRange = 0.8f;
-    ScannerHlpr ScanH;
+
+    [HideInInspector]
+    public ScannerHlpr ScanH;
 
     //estimate - cos too lazy to calculate...
     public float EffMaxSpeed = 15;
@@ -62,6 +64,12 @@ public class TankMotor : MonoBehaviour {
         reset(Trnsfrm);
 
         Tst = FindObjectOfType<Test>();
+
+        Sys.get().add(this);
+    }
+    void OnDisable() {
+        if(Sys.get())
+            Sys.get().Tanks.Remove(this);
     }
 
     public void reset( Transform t ) {
@@ -84,7 +92,12 @@ public class TankMotor : MonoBehaviour {
 
     public bool UseJimCast = true;
 
-    void FixedUpdate() {
+    public Vector2 Pos;
+    public float AngVel;
+
+    public void aFixedUpdate() {
+        Pos = Body.position;
+        AngVel = Body.angularVelocity;
         Vector2 fwd = Trnsfrm.up, right = Trnsfrm.right, pos = Body.position, vel = Body.velocity, turretFwd = Turret.forward;
         
         Forward = fwd;
@@ -95,9 +108,9 @@ public class TankMotor : MonoBehaviour {
         Out_TurretDir = (Vector2)Trnsfrm.InverseTransformDirection(turretFwd);
         Out_RoFTimer = Mathf.Max(RoFTimer / RoF, -1);
 
-        if(Tst != null) UseJimCast = Tst.UseJimCast;
+        /*if(Tst != null) UseJimCast = Tst.UseJimCast;
         if(UseJimCast) {
-            ScanH.proc();
+          //  ScanH.proc();
         } else {
             foreach(var r in Scanner) {
                 var hit = Physics2D.Raycast(pos, Trnsfrm.TransformDirection(r.Dir), r.RangeMod * BaseRange, LayerMask);
@@ -109,7 +122,7 @@ public class TankMotor : MonoBehaviour {
                 } else
                     r.Out_Dis = 1;
             }
-        }
+        }*/
 
         RightMtr = Mathf.Lerp(RightMtr, In_RightMv, (Mathf.Abs(RightMtr) > In_RightMv * Mathf.Sign(RightMtr) ? DeAcceleration : Acceleration) * Time.deltaTime);
         LeftMtr = Mathf.Lerp(LeftMtr, In_LeftMv, (Mathf.Abs(LeftMtr) > In_LeftMv * Mathf.Sign(LeftMtr) ? DeAcceleration : Acceleration) * Time.deltaTime);

@@ -227,7 +227,7 @@ public class Arena : MonoBehaviour {
                 if(Vector2.Dot(Segments[i].Tan, r.Dir) > 0.0f) continue;
 
                 float d;
-                if(FindIntersection(Segments[i].Pnt, Segments[j].Pnt, mtr.Body.position, mtr.Body.position + r.Dir * (r.RangeMod * mtr.BaseRange * r.Out_Dis),
+                if(FindIntersection(Segments[i].Pnt, Segments[j].Pnt, mtr.Pos, mtr.Pos + r.Dir * (r.RangeMod * mtr.BaseRange * r.Out_Dis),
                     out d)) {
                     r.Out_Dis *= d;
                     break;
@@ -266,7 +266,7 @@ public class Arena : MonoBehaviour {
             var o = new Obstacle() {
                 Pos = centre,
                 Rad = rad,
-                //Dis2 = (Motor.Body.position - centre).magnitude,
+                //Dis2 = (Motor.Pos - centre).magnitude,
                 Col = c,
                 Segments = tans,
             };

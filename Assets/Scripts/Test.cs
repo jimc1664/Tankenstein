@@ -26,6 +26,8 @@ public class Test : MonoBehaviour {
 
     public bool UseJimCast = true;
 
+    public static bool IsTesting = false;
+
     //make base 'Scorer' class out of this...
     public class MovementScorer : MonoBehaviour {
 
@@ -46,18 +48,24 @@ public class Test : MonoBehaviour {
         void OnEnable() {
             Ctrl = GetComponent<AiTankController>();
             Motor = Ctrl.Motor;
+            Sys.get().add(this);
         }
-        void FixedUpdate() {
+        void OnDisable() {
+            if(Sys.get())
+                Sys.get().Scorers.Remove(this);
+        }
+
+        public void aFixedUpdate() {
 
 
-            AV += Motor.Body.angularVelocity;
+            AV += Motor.AngVel;
             if(Skip-- > 0) return;
             Skip = 5;
-            var np = Motor.Body.position;
+            var np = Motor.Pos;
 
             float dirFactor = 0.7f;
             Vel += (np - PosList[PLi] ).magnitude
-                * (1.0f - dirFactor + Mathf.Sign(Vector2.Dot(Motor.Body.velocity, Motor.Forward)) * dirFactor);
+                * (1.0f - dirFactor + Mathf.Sign(Vector2.Dot(Motor.Pos, Motor.Forward)) * dirFactor);
             PosList[PLi] = np;
 
 
@@ -69,10 +77,10 @@ public class Test : MonoBehaviour {
         public void reset(Transform t) {
             Motor.reset(t);
             for(int i = PosList.Length; i-- > 0; ) {
-                PosList[i] = Motor.Body.position;
+                PosList[i] = Motor.Pos;
             }
             PLi = 0;
-            //LastPos = Motor.Body.position;
+            //LastPos = Motor.Pos;
             AV= Score = 0;
         }
     };
@@ -102,8 +110,18 @@ public class Test : MonoBehaviour {
                 initTank(i, j);
             }
         reset();
-    }
+        IsTesting = true;
 
+    }
+    void Awake() {
+        IsTesting = true;
+    }
+    
+    void OnDisable() {
+
+        IsTesting = false;
+
+    }
 
     void reset() {
 
@@ -180,7 +198,7 @@ public class Test : MonoBehaviour {
     }
 
     MovementScorer LastBest = null;
-    void FixedUpdate() {
+    public void aFixedUpdate() {
         if((Timer -= Time.deltaTime) > 0) return;
 
         GenerationCounter++;
