@@ -14,7 +14,7 @@ public class Sys : MonoBehaviour {
     [System.NonSerialized]
     public List<AiTankController> Ais = new List<AiTankController>();
     [System.NonSerialized]
-    public List< Test.MovementScorer> Scorers = new List<Test.MovementScorer>();
+    public List< MovementScorer> Scorers = new List<MovementScorer>();
 
 
     public void add(TankMotor tm) {
@@ -22,10 +22,10 @@ public class Sys : MonoBehaviour {
         Tanks.Add(tm);
     }
     public void add(AiTankController a) {
-        if(a.GetComponent<Test.MovementScorer>()) return;
+        if(a.GetComponent<MovementScorer>()) return;
         Ais.Add(a);
     }
-    public void add(Test.MovementScorer s) {
+    public void add(MovementScorer s) {
         Ais.Remove(s.GetComponent<AiTankController>());
         Scorers.Add(s);
     }

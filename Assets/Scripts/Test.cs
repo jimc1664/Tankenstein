@@ -16,84 +16,31 @@ public class Test : MonoBehaviour {
 
     public bool Vs = false;
 
-    public List<Transform> Start1 , Start2;
+    [System.Serializable]
+    public class ArenaData {
+        public Transform S1, S2;
+        public float ScoreMod = 1;
+
+        public float LastScore = 0;
+    }; 
+
+    public List<ArenaData> ArenaDat;
 
     public bool Pause = false, Accel = false;
     public float AccelFactor = 20;
 
     public NeuralNetwork.Network[] Nets;
-    public MovementScorer[,,] Tanks;
+    public Scorer[,,] Tanks;
     public float Timer = 0;
 
     public bool UseJimCast = true;
 
     public static bool IsTesting = false;
 
-    //make base 'Scorer' class out of this...
-    public class MovementScorer : MonoBehaviour {
-
-
-        [HideInInspector]
-        public TankMotor Motor;
-        [HideInInspector]
-        public AiTankController Ctrl;
-
-
-        public float Vel = 0;
-        public float AV = 0;
-        public float Spacing = 0;
-        public float Score = 0;
-
-        Vector2[] PosList = new Vector2[20];
-        int PLi = -1;
-        int Skip = 0;
-        void OnEnable() {
-            Ctrl = GetComponent<AiTankController>();
-            Motor = Ctrl.Motor;
-            Sys.get().add(this);
-        }
-        void OnDisable() {
-            if(Sys.get())
-                Sys.get().Scorers.Remove(this);
-        }
-
-        public void aFixedUpdate() {
-
-
-            AV += Motor.AngVel;
-            if(Skip-- > 0) return;
-            Skip = 5;
-            var np = Motor.Pos;
-
-            float dirFactor = 0.7f;
-            Vel += (np - PosList[PLi]).magnitude
-                * (1.0f - dirFactor + Mathf.Sign(Vector2.Dot(Motor.Pos, Motor.Forward)) * dirFactor);
-            PosList[PLi] = np;
-
-            foreach(var r in Motor.Scanner) {
-                float m = Mathf.Min(0.2f, r.Out_Dis * r.RangeMod );
-                Spacing += m / r.RangeMod;
-            }
-            PLi = (PLi + 1) % PosList.Length;
-
-           // Score = Spacing + Vel - Mathf.Abs(AV) * 0.0025f;
-            //Score = Spacing;
-        }
-
-        public void reset(Transform t) {
-            Motor.reset(t);
-            for(int i = PosList.Length; i-- > 0; ) {
-                PosList[i] = Motor.Pos;
-            }
-            PLi = 0;
-            //LastPos = Motor.Pos;
-            Spacing = Vel = AV = Score = 0;
-        }
-    };
 
     void initTank( int i, int j, int k ) {
 
-        Tanks[i, j, k] = Instantiate(TankFab).AddComponent<MovementScorer>();
+        Tanks[i, j, k] = Instantiate(TankFab).AddComponent(ScoreType ) as Scorer;
         if(k == 0)
             Tanks[i, j, k].Ctrl.init();
         else
@@ -101,17 +48,23 @@ public class Test : MonoBehaviour {
 
         var scn = Tanks[i, j, k].GetComponent<ScannerHlpr>();
 
-        scn.Area = Start1[k].GetComponentInParent<Arena>();
+        scn.Area = ArenaDat[k].S1.GetComponentInParent<Arena>();
         scn.init();
     }
+    System.Type ScoreType;
+    Scorer Scrr;
+
     void OnEnable() {
+
+        ScoreType = (Scrr=GetComponent<Scorer>()).GetType();        
+
         foreach( var t in FindObjectsOfType<AiTankController>() ) 
             Destroy( t.gameObject );
 
         Sample = Mathf.Clamp(Sample, 1, 999);
-        ArenaCnt = Mathf.Clamp(ArenaCnt, 1, Start1.Count);
+        ArenaCnt = Mathf.Clamp(ArenaCnt, 1, ArenaDat.Count);
         StrainCnt = Mathf.Clamp(StrainCnt, 1, Sample-2 );
-        Tanks = new MovementScorer[Sample, StrainCnt, ArenaCnt ];
+        Tanks = new Scorer[Sample, StrainCnt, ArenaCnt ];
         for(int k = 0; k < ArenaCnt; k++)
             for(int j = 0; j < StrainCnt; j++)
                 for(int i = Sample; i-- >0; ) {
@@ -139,7 +92,7 @@ public class Test : MonoBehaviour {
         if(Sample != Tanks.GetLength(0)) {
             Debug.Log("change sample " + Sample + "__" + Tanks.GetLength(0));
             var ot = Tanks;
-            Tanks = new MovementScorer[Sample,sc, ac];
+            Tanks = new Scorer[Sample,sc, ac];
             for(int k = 0; k < ac; k++)
                 for(int j = 0; j < sc; j++) {
                     if(ot.GetLength(0) > Sample) {
@@ -157,11 +110,11 @@ public class Test : MonoBehaviour {
             }
         }
 
-        ArenaCnt = Mathf.Clamp(ArenaCnt, 1, Start1.Count);
+        ArenaCnt = Mathf.Clamp(ArenaCnt, 1, ArenaDat.Count);
         if(ac != ArenaCnt ) {
             Debug.Log("change ArenaCnt " + ArenaCnt + "__" + Tanks.GetLength(2));
             var ot = Tanks;
-            Tanks = new MovementScorer[Sample, sc, ArenaCnt];       
+            Tanks = new Scorer[Sample, sc, ArenaCnt];       
             if(ac > ArenaCnt) {
 
                 for(int k = ArenaCnt; k-- > 0;)
@@ -191,7 +144,7 @@ public class Test : MonoBehaviour {
         if(sc != StrainCnt) {
             Debug.Log("change StrainCnt " + StrainCnt + "__" + Tanks.GetLength(1));
             var ot = Tanks;
-            Tanks = new MovementScorer[Sample, StrainCnt, ArenaCnt];
+            Tanks = new Scorer[Sample, StrainCnt, ArenaCnt];
             if(sc > StrainCnt) {
 
                 for(int k = 0; k < ArenaCnt; k++)
@@ -221,7 +174,7 @@ public class Test : MonoBehaviour {
         for(int k = ArenaCnt; k-- > 0;)
             for(int j = StrainCnt; j-- > 0;)
                 for(int i = Sample; i-- > 0;)
-                    Tanks[i, j,k].reset(Start1[k]);
+                    Tanks[i, j,k].reset(ArenaDat[k].S1, Scrr);
 
         Timer = MaxTime;
     }
@@ -238,7 +191,7 @@ public class Test : MonoBehaviour {
     }
 
 
-    //  MovementScorer LastBest = null;
+    //  Scorer LastBest = null;
     public void aFixedUpdate() {
 
 
@@ -250,15 +203,29 @@ public class Test : MonoBehaviour {
 
 
         for(int j = Tanks.GetLength(1); j-- > 0;) {
-            MovementScorer best = Tanks[Tanks.GetLength(0) - 1, j, 0];
+            //  Scorer best = Tanks[Tanks.GetLength(0) - 1, j, 0];
 
+            float tm = 0;
+            int bestI = Tanks.GetLength(0)-1;
+            float[] arenaScores = new float[Tanks.GetLength(0)];
+            for(int i = Tanks.GetLength(0); i-- > 0;) {
+                for(int k = Tanks.GetLength(2); k-- > 0;) {
+                    arenaScores[i] += Tanks[i, j, k].Score * ArenaDat[k].ScoreMod;
+                    tm += ArenaDat[k].ScoreMod;
+                }
+
+                if(arenaScores[i] > arenaScores[bestI])
+                    bestI = i;
+            }
+
+            /*
             for(int i = Tanks.GetLength(0) - 1; i-- > 0;) {
                 for(int k = Tanks.GetLength(2); --k > 0;)
                     Tanks[i, j, 0].Score += Tanks[i, j, k].Score;
                 if(Tanks[i, j, 0].Score > best.Score)
                     best = Tanks[i, j, 0];
             }
-            /*
+            
             if(LastBest != null) {
                 LastBest.Score *= 0.5f;
                 for(int i = Tanks.GetLength(0) - 1; i-- > 0;) {
@@ -285,10 +252,21 @@ public class Test : MonoBehaviour {
                 }
 
             } */
-            
-            Debug.Log("best " + best.Score);
 
-            for(int i = Tanks.GetLength(0) - 1; i-- > 0;) {
+            var best = Tanks[bestI, j, 0];
+            float avg = arenaScores[bestI] / tm;
+            Debug.Log("best " + avg );
+
+            int bestK = 0;
+            ArenaDat[0].ScoreMod = 1;
+
+            for(int k = Tanks.GetLength(2); --k > 0;) {
+                ArenaDat[k].ScoreMod = 1;
+                if(Tanks[bestI, j, k].Score > Tanks[bestI, j, bestK].Score)
+                    bestK = k;
+            }
+            ArenaDat[bestK].ScoreMod = 0.1f;
+            for(int i = Tanks.GetLength(0); i-- > 0;) {
                 var t = Tanks[i,j, 0];
                 if(t == best ) continue;
                
@@ -299,7 +277,7 @@ public class Test : MonoBehaviour {
     }
 
     //todo - class-ify optimiser so it can haz parameters and not look shit  -- also, ya know, actually do it properly
-    void geneticOptimisation(MovementScorer t1, MovementScorer t2) {
+    void geneticOptimisation(Scorer t1, Scorer t2) {
         NeuralNetwork.Network n1 = t1.Ctrl.NN, n2 = t2.Ctrl.NN;
 
         if(n1 != n2)
@@ -334,7 +312,7 @@ public class Test : MonoBehaviour {
                     n1.Neurons[layer][ni].bias = m;
                 } else {
                     m *= Mathf.Abs(m);
-                    n1.Neurons[layer][ni].bias = NeuralNetwork.ActivationMethods.LogisticSigmoid(n1.Neurons[layer][ni].bias + m *0.01f);
+                    n1.Neurons[layer][ni].bias = NeuralNetwork.ActivationMethods.HyperbolidTangent(n1.Neurons[layer][ni].bias + m *0.01f);
                 }
             }
             var s1 = n1.Synapsis[layer - 1];
@@ -346,7 +324,7 @@ public class Test : MonoBehaviour {
                     s1[si].weight = m;
                 } else {
                     m *= Mathf.Abs(m);
-                    s1[si].weight = NeuralNetwork.ActivationMethods.LogisticSigmoid(s1[si].weight + m * 0.01f);
+                    s1[si].weight = NeuralNetwork.ActivationMethods.HyperbolidTangent(s1[si].weight + m * 0.01f);
                 }
             }
         }

@@ -45,7 +45,7 @@ namespace NeuralNetwork
             return 1.0f / (1.0f + Convert.ToSingle(Math.Exp(-values)));
         }
 
-        private static float HyperbolidTangent(float values)
+        public static float HyperbolidTangent(float values)
         {
             return Convert.ToSingle(Math.Tanh(values));
         }
