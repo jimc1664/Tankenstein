@@ -7,7 +7,7 @@ public class Arena : MonoBehaviour {
     //http://csharphelper.com/blog/2014/08/find-a-minimal-bounding-circle-of-a-set-of-points-in-c/
     //was broken!! -- fixed..
 
-    static void FindIntersection(
+    static public void FindIntersection(
         Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4,
         out bool lines_intersect, out bool segments_intersect,
         out Vector2 intersection,
@@ -182,9 +182,58 @@ public class Arena : MonoBehaviour {
 
         public Vector2 Pos;
         public float Rad;
-      //  public float Dis2;
+        //  public float Dis2;
 
+        public struct Segment {
+            public Vector2 Pnt, Tan;
+        }
+        public Segment[] Segments;
         public PolygonCollider2D Col;
+
+        static bool FindIntersection(
+             Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, out float t2) {
+            // Get the segments' parameters.
+            float dx12 = p2.x - p1.x;
+            float dy12 = p2.y - p1.y;
+            float dx34 = p4.x - p3.x;
+            float dy34 = p4.y - p3.y;
+
+            // Solve for t1 and t2
+            float denominator = (dy12 * dx34 - dx12 * dy34);
+
+            float t1 = ((p1.x - p3.x) * dy34 + (p3.y - p1.y) * dx34)
+                    / denominator;
+            if(float.IsInfinity(t1)) {
+                t2 = 0;
+                return false;
+            }
+
+            t2 = ((p3.x - p1.x) * dy12 + (p1.y - p3.y) * dx12)
+                    / -denominator;
+            // The segments intersect if t1 and t2 are between 0 and 1.
+            return
+                (t1 >= 0) && (t1 <= 1) &&
+                 (t2 <= 1);
+
+
+        }
+        public void cast( TankMotor mtr, TankMotor.Ray r  ) {    
+            //if( c! ) r.Out_Dis = (t1 - pen) / (r.RangeMod * Motor.BaseRange);
+            for(int i = 0, j = Segments.Length - 1; i < Segments.Length; j = i, i++) { //todo we could cache index of hit and start at that point next time
+
+                //   var m = (c.points[i] + c.points[j]) * 0.5f;
+                //   Gizmos.color = Color.black;
+                //  Gizmos.DrawLine(m, m + obs.Tangents[i] * 4);
+                if(Vector2.Dot(Segments[i].Tan, r.Dir) > 0.0f) continue;
+
+                float d;
+                if(FindIntersection(Segments[i].Pnt, Segments[j].Pnt, mtr.Body.position, mtr.Body.position + r.Dir * (r.RangeMod * mtr.BaseRange * r.Out_Dis),
+                    out d)) {
+                    r.Out_Dis *= d;
+                    break;
+                }
+            }
+        }
     };
 
     [System.NonSerialized]
@@ -203,8 +252,14 @@ public class Arena : MonoBehaviour {
         foreach(var c in cols) {
             Vector2 centre; float rad;
             var t = c.transform;
-            foreach(var p in c.points)
+            var tans = new Obstacle.Segment[c.points.Length];
+            for( int i = 0, j = c.points.Length-1; i < c.points.Length; j = i, i++ ) {
+                var p = c.points[i];
                 wrknList.Add(t.TransformPoint(p));
+                var n = (p - c.points[j]).normalized;
+                tans[i].Pnt = p;
+                tans[i].Tan = new Vector2(n.y, -n.x);
+            }
             FindMinimalBoundingCircle(wrknList, out centre, out rad);
             wrknList.Clear();
 
@@ -213,6 +268,7 @@ public class Arena : MonoBehaviour {
                 Rad = rad,
                 //Dis2 = (Motor.Body.position - centre).magnitude,
                 Col = c,
+                Segments = tans,
             };
             Obs.Add(o);
            // Debug.Log("add " + centre + "  r " + rad);

@@ -182,6 +182,8 @@ public class ScannerHlpr : MonoBehaviour {
 
     }
 
+
+
     bool cast( Arena.Obstacle obs, TankMotor.Ray r ) {
         Vector2 tan = new Vector2(r.Dir.y, -r.Dir.x);
 
@@ -196,9 +198,9 @@ public class ScannerHlpr : MonoBehaviour {
         float pen = Mathf.Sqrt(obs.Rad * obs.Rad - t2 * t2);
         if(t1 - pen > r.RangeMod * Motor.BaseRange * r.Out_Dis ) return true;
 
-        r.Out_Dis = (t1 - pen) / (r.RangeMod * Motor.BaseRange);
+        obs.cast(Motor, r);
 
-        return true;
+        return true; 
     }
 
     public void proc() {
@@ -224,9 +226,10 @@ public class ScannerHlpr : MonoBehaviour {
                 Motor.Scanner[o.Ri].Out_Dis = 0;
                 for(int ri = o.Ri, maxIter = Motor.Scanner.Count; ;) {
                     ri = (ri + 1) % Motor.Scanner.Count;
-                    float dt = Vector2.Dot(Motor.Scanner[ri].Dir, dir);
-                    if(dt > 0.3f)
-                        Motor.Scanner[ri].Out_Dis = 0;
+                    var r = Motor.Scanner[ri];
+                    float dt = Vector2.Dot(r.Dir, dir);
+                    if(dt > 0.0f)
+                        o.Obs.cast(Motor, r);
                     else
                         break;
 
@@ -237,9 +240,10 @@ public class ScannerHlpr : MonoBehaviour {
                 }
                 for(int ri = o.Ri, maxIter = Motor.Scanner.Count; ;) {
                     ri = (ri + Motor.Scanner.Count - 1) % Motor.Scanner.Count;
-                    float dt = Vector2.Dot(Motor.Scanner[ri].Dir, dir);
-                    if(dt > 0.3f)
-                        Motor.Scanner[ri].Out_Dis = 0;
+                    var r = Motor.Scanner[ri];
+                    float dt = Vector2.Dot(r.Dir, dir);
+                    if(dt > 0.0f)
+                        o.Obs.cast(Motor, r);
                     else
                         break;
                     if(maxIter-- < 0) {
