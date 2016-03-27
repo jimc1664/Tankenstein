@@ -26,7 +26,7 @@ public class AiTankController : MonoBehaviour {
 
     public void init() {
 
-        int[] layers = { Input.Length, 16, 8, 4, 2 };
+        int[] layers = { Input.Length, 8, 4, 2 };
         try {
             var r = Random.value; //lazy..
             NN = new NeuralNetwork.Network(layers, true, Random.seed);
@@ -35,7 +35,9 @@ public class AiTankController : MonoBehaviour {
         }
     }
     public void init(NeuralNetwork.Network nn) {
-        NN = nn;
+        //NN = nn;
+        NN = new NeuralNetwork.Network(nn);
+        
     }
 
     public void aFixedUpdate() {
@@ -53,8 +55,9 @@ public class AiTankController : MonoBehaviour {
         } catch(System.Exception e) {
             Debug.LogError("NN err: " + e.Message);
         }
-
     }
+
+
   /*  void aUpdate() {
         Motor.In_LeftMv = Mathf.Lerp(Motor.In_LeftMv, (Input.GetKey(KeyCode.Q) ? 1.0f : 0) - (Input.GetKey(KeyCode.A) ? 1.0f : 0), 20.0f * Time.deltaTime);
         Motor.In_RightMv = Mathf.Lerp(Motor.In_RightMv, (Input.GetKey(KeyCode.W) ? 1.0f : 0) - (Input.GetKey(KeyCode.S) ? 1.0f : 0), 20.0f * Time.deltaTime);

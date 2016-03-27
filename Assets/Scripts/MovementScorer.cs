@@ -19,16 +19,8 @@ public class MovementScorer : Scorer {
     int PLi = -1;
     int Skip = 0;
 
-    new void OnEnable() {
-        base.OnEnable();
-        Sys.get().add(this);
-    }
-    void OnDisable() {
-        if(Sys.get())
-            Sys.get().Scorers.Remove(this);
-    }
 
-    public void aFixedUpdate() {
+    public override void aFixedUpdate() {
 
         AV += Motor.AngVel;
         if(Skip-- > 0) return;
@@ -50,9 +42,10 @@ public class MovementScorer : Scorer {
         //Score = Spacing;
     }
 
-    public override void reset(Transform t, Scorer _s) {
-
+    public override void reset(Transform t, Scorer _s, Test.ArenaData ad) {
+        var s = _s as MovementScorer;
         Motor.reset(t);
+ 
         for(int i = PosList.Length; i-- > 0;) {
             PosList[i] = Motor.Pos;
         }
@@ -60,7 +53,7 @@ public class MovementScorer : Scorer {
         //LastPos = Motor.Pos;
         Spacing = Vel = AV = Score = 0;
         //Score = 1000;
-        var s = _s as MovementScorer;
+        
         Vel_Mod = s.Vel_Mod;
         AV_Mod = s.AV_Mod;
         Spacing_Mod = s.Spacing_Mod;

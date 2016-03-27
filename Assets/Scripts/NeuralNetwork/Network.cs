@@ -157,9 +157,19 @@ namespace NeuralNetwork
             }
         }
 
+
+        public Network(Network o) {
+            neurons = (Neuron[][])o.neurons.Clone();
+            synapsis = (Synapsis[][])o.synapsis.Clone();
+            layers = (int[])o.layers.Clone();
+            random = new Random();
+        }
+
+        
         #endregion
 
         #region Public Methods
+        
 
         public virtual float[] Compute(float[] xValues)
         {

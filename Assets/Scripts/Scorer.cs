@@ -9,14 +9,22 @@ public class Scorer : MonoBehaviour {
     [HideInInspector]
     public AiTankController Ctrl;
 
-    protected void OnEnable() {
-        Ctrl = GetComponent<AiTankController>();
-        Motor = Ctrl.Motor;
-    }
     public float Score = 0;
 
+    protected void OnEnable() {
+        Ctrl = GetComponent<AiTankController>();
+        Motor = GetComponent<TankMotor>();
+        Sys.get().add(this);
+    }
 
-    public virtual void reset(Transform t, Scorer s ) {
+
+    void OnDisable() {
+        if(Sys.get())
+            Sys.get().Scorers.Remove(this);
+    }
+
+    public virtual void aFixedUpdate() { }
+    public virtual void reset(Transform t, Scorer s, Test.ArenaData ad) {
 
     }
 }

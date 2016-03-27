@@ -192,6 +192,8 @@ public class ScannerHlpr : MonoBehaviour {
         FindIntersection(Motor.Pos, r.Dir, obs.Pos, tan,
             out intersection,
             out t1, out t2);
+
+        
         if(t1 < 0 || Mathf.Abs(t2) > obs.Rad) return false;
         if( t1 - obs.Rad > r.RangeMod * Motor.BaseRange *r.Out_Dis ) return true;
 
@@ -205,6 +207,8 @@ public class ScannerHlpr : MonoBehaviour {
 
     public void proc() {
 
+
+        
         foreach(var r in Motor.Scanner) {
             r.Out_Dis = 1;
         }
@@ -220,7 +224,7 @@ public class ScannerHlpr : MonoBehaviour {
             }
          
             fixRi(dir, ref o.Ri);
-
+         // Debug.Log("mag " + mag);
             if( mag < o.Obs.Rad ) {
 
                 Motor.Scanner[o.Ri].Out_Dis = 0;
@@ -254,11 +258,12 @@ public class ScannerHlpr : MonoBehaviour {
 
                 continue;
             }
-
+             
             // Gizmos.DrawLine(Motor.Pos, Motor.Pos + dir);
             //Gizmos.color = Color.black;
             //Gizmos.DrawLine(Motor.Pos, Motor.Pos + Motor.Scanner[o.Ri].Dir *4.0f );
 
+          
             cast(o.Obs, Motor.Scanner[o.Ri]);
             for(int ri = o.Ri, maxIter = Motor.Scanner.Count; ;) {
                 ri = (ri + 1) % Motor.Scanner.Count;

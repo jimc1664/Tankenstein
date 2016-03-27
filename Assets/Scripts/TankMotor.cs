@@ -26,6 +26,7 @@ public class TankMotor : MonoBehaviour {
         public float Out_Dis;
         public float RangeMod;
         public Vector2 Dir;
+        public Vector2 ODir;
     };
     public List<Ray> Scanner = new List<Ray>();
     public int RayCount = 32;
@@ -81,6 +82,8 @@ public class TankMotor : MonoBehaviour {
 
         RightMtr = LeftMtr = TurretAngle = RoFTimer = 0;
         In_LeftMv = In_RightMv = In_TurretRot = In_Fire = 0;
+
+
     }
 
     public void setLayer( int l ) {
@@ -108,12 +111,18 @@ public class TankMotor : MonoBehaviour {
         Out_TurretDir = (Vector2)Trnsfrm.InverseTransformDirection(turretFwd);
         Out_RoFTimer = Mathf.Max(RoFTimer / RoF, -1);
 
+      //  Debug.Log("scan");
+        foreach(var r in Scanner) {
+            // Debug.Log(" d  " + r.Out_Dis);
+
+            r.Dir = Trnsfrm.TransformDirection(r.ODir);
+        }
         /*if(Tst != null) UseJimCast = Tst.UseJimCast;
         if(UseJimCast) {
           //  ScanH.proc();
         } else {
             foreach(var r in Scanner) {
-                var hit = Physics2D.Raycast(pos, Trnsfrm.TransformDirection(r.Dir), r.RangeMod * BaseRange, LayerMask);
+                var hit = Physics2D.Raycast(pos, Trnsfrm.TransformDirection(r.ODir), r.RangeMod * BaseRange, LayerMask);
                 if(hit.collider != null) {
 
                     r.Out_Dis = hit.fraction;
@@ -157,11 +166,11 @@ public class TankMotor : MonoBehaviour {
             for(int i = 0; i < RayCount; i++) {
                 var r = new Ray();
                 r.Out_Dis = 1;
-                r.Dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                r.Dir += Vector2.up * ScannerSkewDir;
-                float mag = r.Dir.magnitude;
+                r.ODir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                r.ODir += Vector2.up * ScannerSkewDir;
+                float mag = r.ODir.magnitude;
                 mag += (1 - mag) * (1-ScannerSkewRange);
-                r.Dir.Normalize();
+                r.ODir.Normalize();
                 r.RangeMod = mag;
 
 
@@ -170,11 +179,14 @@ public class TankMotor : MonoBehaviour {
             }
         }
         Trnsfrm = transform;
+        Pos = Trnsfrm.position;
+        Forward = Trnsfrm.up;
         foreach( var r in Scanner ) {
+            r.Dir = Trnsfrm.TransformDirection(r.ODir);
             Gizmos.color = Color.blue;            
-            Gizmos.DrawLine( Trnsfrm.position, Trnsfrm.TransformPoint( r.Dir*r.RangeMod*BaseRange) );
+            Gizmos.DrawLine( Trnsfrm.position, Trnsfrm.TransformPoint( r.ODir*r.RangeMod*BaseRange) );
             Gizmos.color = Color.green;
-            Gizmos.DrawLine(Trnsfrm.position, Trnsfrm.TransformPoint(r.Dir * r.RangeMod * BaseRange * r.Out_Dis));
+            Gizmos.DrawLine(Trnsfrm.position, Trnsfrm.TransformPoint(r.ODir * r.RangeMod * BaseRange * r.Out_Dis));
         }
     }
 }

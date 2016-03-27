@@ -255,8 +255,9 @@ public class Arena : MonoBehaviour {
             var tans = new Obstacle.Segment[c.points.Length];
             for( int i = 0, j = c.points.Length-1; i < c.points.Length; j = i, i++ ) {
                 var p = c.points[i];
-                wrknList.Add(t.TransformPoint(p));
                 var n = (p - c.points[j]).normalized;
+                p = t.TransformPoint(p);
+                wrknList.Add(p);
                 tans[i].Pnt = p;
                 tans[i].Tan = new Vector2(n.y, -n.x);
             }
