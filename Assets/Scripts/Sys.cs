@@ -72,7 +72,7 @@ public class Sys : MonoBehaviour {
                 var si = Interlocked.Decrement(ref ScorerI);
                 if(si < 0) break;
                 var s = Scorers[si];
-                // s.Motor.aFixedUpdate();
+                s.Motor.aFixedUpdate_Threaded();
                 s.Motor.ScanH.proc();
                 s.Ctrl.aFixedUpdate();
                 s.aFixedUpdate();
@@ -81,6 +81,7 @@ public class Sys : MonoBehaviour {
                 var aii = Interlocked.Decrement(ref AiI);
                 if(aii < 0) break;
                 var a = Ais[aii];
+                a.Motor.aFixedUpdate_Threaded();
                 a.Motor.ScanH.proc();
                 a.aFixedUpdate();
             }
@@ -88,6 +89,7 @@ public class Sys : MonoBehaviour {
                 var ti = Interlocked.Decrement(ref TankI);
                 if(ti < 0) break;
                 var t = Tanks[ti];
+                t.aFixedUpdate_Threaded();
                 t.ScanH.proc();
             }
             Interlocked.Decrement(ref Working);
@@ -97,7 +99,7 @@ public class Sys : MonoBehaviour {
         }
     }
 
-
+    public static float DeltaTime = 0;
 
     void FixedUpdate () {
 
@@ -113,11 +115,12 @@ public class Sys : MonoBehaviour {
         else
             return;
 
+        DeltaTime = Time.deltaTime;
         //Debug.Log(" about to start iter " + Pending);
 
-        foreach(var t in Tanks) t.aFixedUpdate();
-        foreach(var a in Ais) a.Motor.aFixedUpdate();
-        foreach(var s in Scorers) s.Motor.aFixedUpdate();
+        foreach(var t in Tanks) t.aFixedUpdate_UnThreaded();
+        foreach(var a in Ais) a.Motor.aFixedUpdate_UnThreaded();
+        foreach(var s in Scorers) s.Motor.aFixedUpdate_UnThreaded();
 
         while(Pending != Threads.Length) {
             //Thread.Sleep(1);

@@ -93,37 +93,23 @@ public class TankMotor : MonoBehaviour {
         LayerMask = (1 << l) | (1 << 31); 
     }
 
-    public Vector2 Pos;
+    public Vector2 Pos, Vel;
     public float AngVel;
 
-    public void aFixedUpdate() {
-        Pos = Body.position;
+
+    Matrix4x4 Mat;
+    Vector3 TurretFwd;
+
+    public void aFixedUpdate_UnThreaded() {
         AngVel = Body.angularVelocity;
-        Vector2 fwd = Trnsfrm.up, right = Trnsfrm.right, pos = Body.position, vel = Body.velocity, turretFwd = Turret.forward;
-        
-        Forward = fwd;
+        Mat = Trnsfrm.localToWorldMatrix;
+        TurretFwd = Turret.forward;
 
-        CurrentSpeed = vel.magnitude;
-        vel /= EffMaxSpeed;
-        Out_Vel = new Vector2(Vector2.Dot(fwd, vel), Vector2.Dot(right, vel));
-        Out_TurretDir = (Vector2)Trnsfrm.InverseTransformDirection(turretFwd);
-        Out_RoFTimer = Mathf.Max(RoFTimer / RoF, -1);
-
-      //  Debug.Log("scan");
-        foreach(var r in Scanner) {
-            // Debug.Log(" d  " + r.Out_Dis);
-
-            r.Dir = Trnsfrm.TransformDirection(r.ODir);
-        }
-
-        RightMtr = Mathf.Lerp(RightMtr, In_RightMv, (Mathf.Abs(RightMtr) > In_RightMv * Mathf.Sign(RightMtr) ? DeAcceleration : Acceleration) * Time.deltaTime);
-        LeftMtr = Mathf.Lerp(LeftMtr, In_LeftMv, (Mathf.Abs(LeftMtr) > In_LeftMv * Mathf.Sign(LeftMtr) ? DeAcceleration : Acceleration) * Time.deltaTime);
+        Vector2 fwd = Forward = Mat.GetColumn(1), right = Mat.GetColumn(0);
+        Vector2 pos = Pos = Body.position, vel = Vel =Body.velocity;
 
         Body.AddForceAtPosition(fwd * MaxForce * RightMtr, pos + right * 0.5f, ForceMode2D.Force);
         Body.AddForceAtPosition(fwd * MaxForce * LeftMtr, pos - right * 0.5f, ForceMode2D.Force);
-
-        
-        TurretAngle = Mathf.MoveTowardsAngle(TurretAngle, TurretAngle + In_TurretRot * 120.0f, TurretSpd * Time.deltaTime);
 
         Turret.localEulerAngles = new Vector3(0, TurretAngle, 0);
 
@@ -131,13 +117,34 @@ public class TankMotor : MonoBehaviour {
 
             var go=Instantiate(BulletFab, Barrel.position, Turret.rotation) as GameObject;
             go.layer = gameObject.layer;
-            go.GetComponent<Rigidbody2D>().velocity = turretFwd * BulletSpeed;
+            go.GetComponent<Rigidbody2D>().velocity = TurretFwd * BulletSpeed;
             RoFTimer = RoF;
         }
 
 
     }
+    public void aFixedUpdate_Threaded() {
+        Vector2 fwd = Forward = Mat.GetColumn(1), right = Mat.GetColumn(0);
 
+        var vel = Vel;
+        CurrentSpeed = vel.magnitude;
+        vel /= EffMaxSpeed;
+        Out_Vel = new Vector2(Vector2.Dot(fwd, vel), Vector2.Dot(right, vel));
+        Out_TurretDir = (Vector2)Mat.transpose.MultiplyVector(TurretFwd);
+        Out_RoFTimer = Mathf.Max(RoFTimer / RoF, -1);
+
+        //  Debug.Log("scan");
+        foreach(var r in Scanner) {
+            // Debug.Log(" d  " + r.Out_Dis);
+            r.Dir = Mat.MultiplyVector(r.ODir).normalized;
+        }
+
+        RightMtr = Mathf.Lerp(RightMtr, In_RightMv, (Mathf.Abs(RightMtr) > In_RightMv * Mathf.Sign(RightMtr) ? DeAcceleration : Acceleration) * Sys.DeltaTime);
+        LeftMtr = Mathf.Lerp(LeftMtr, In_LeftMv, (Mathf.Abs(LeftMtr) > In_LeftMv * Mathf.Sign(LeftMtr) ? DeAcceleration : Acceleration) * Sys.DeltaTime);
+
+        TurretAngle = Mathf.MoveTowardsAngle(TurretAngle, TurretAngle + In_TurretRot * 120.0f, TurretSpd * Sys.DeltaTime);
+
+    }
 
     void OnDrawGizmos() {
 
