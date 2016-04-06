@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using System.Collections;
+using System.IO;
 
 public class AiTankController : MonoBehaviour {
 
@@ -7,7 +7,7 @@ public class AiTankController : MonoBehaviour {
 
     [HideInInspector]
     public NeuralNetwork.Network NN;
-
+    public bool loadWeight = false;
 
     float[] Input;
 
@@ -26,18 +26,33 @@ public class AiTankController : MonoBehaviour {
 
     public void init() {
 
-        int[] layers = { Input.Length, 8, 4, 2 };
+        int[] layers = { Input.Length, 8, 4 };
         try {
             var r = Random.value; //lazy..
             NN = new NeuralNetwork.Network(layers, true, Random.seed);
+            if (loadWeight)
+                NN.Weights = LoadWeights();
         } catch(System.Exception e) {
             Debug.LogError("NN err: " + e.Message);
         }
     }
+
+    float[] LoadWeights()
+    {
+        TextReader read = new StreamReader("weights.txt");
+        string[] str = read.ReadToEnd().Split(',');
+        read.Close();
+        float[] weights = new float[str.Length];
+        for (int i = 0; i < weights.Length; i++)
+        {
+            weights[i] = float.Parse(str[i]);
+        }
+        return weights;
+    }
+
     public void init(NeuralNetwork.Network nn) {
         //NN = nn;
         NN = new NeuralNetwork.Network(nn);
-        
     }
 
     public void aFixedUpdate() {

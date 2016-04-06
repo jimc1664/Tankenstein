@@ -34,7 +34,7 @@ namespace NeuralNetwork
         {
             get
             {
-                float[] rtn = new float[(neurons.Length * neurons[0].Length) + (synapsis.Length * synapsis[0].Length)];
+                float[] rtn = new float[amountOfFloats];
 
                 int k = 0;
                 for (int i = 0; i < synapsis.Length; i++)
@@ -59,8 +59,7 @@ namespace NeuralNetwork
             }
             set
             {
-                int len = (neurons.Length * neurons[0].Length) + (synapsis.Length * synapsis[0].Length);
-                if (value.Length != len)
+                if (value.Length != amountOfFloats)
                     throw new Exception("Weights length does not match synapsis & neurons");
 
                 int k = 0;
@@ -90,6 +89,7 @@ namespace NeuralNetwork
 
         private Neuron[][] neurons;
         private Synapsis[][] synapsis;
+        private int amountOfFloats = 0;
         protected int[] layers;
         protected Random random;
 
@@ -115,7 +115,7 @@ namespace NeuralNetwork
                 neurons[l] = new Neuron[layers[l]];
                 for (int i = 0; i < layers[l]; i++)
                 {
-
+                    amountOfFloats++;
                     neurons[l][i] = new Neuron(ActivationType.HyperbolicTangent, Convert.ToSingle(random.NextDouble() * 2.0f - 1.0f), Convert.ToSingle(random.NextDouble() * 2.0f - 1.0f));
                 }
             }
@@ -232,6 +232,7 @@ namespace NeuralNetwork
                     {
                         //Set weights to 0 for some synapsis
                     }
+                    amountOfFloats++;
                     synCounter++;
                 }
             }

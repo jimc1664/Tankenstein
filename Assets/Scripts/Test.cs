@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using System.Collections;
+using System.IO;
 using System.Collections.Generic;
 
 public class Test : MonoBehaviour {
@@ -30,22 +30,25 @@ public class Test : MonoBehaviour {
     public bool Pause = false, Accel = false;
     public float AccelFactor = 20;
 
-    public NeuralNetwork.Network[] Nets;
     public Scorer[,,] Tanks;
     public float Timer = 0;
 
-    public bool UseJimCast = true;
+    public bool SaveResults = true;
+    public bool loadResults = true;
 
     public static bool IsTesting = false;
-
 
     void initTank( int i, int j, int k ) {
 
         Tanks[i, j, k] = Instantiate(TankFab).AddComponent(ScoreType ) as Scorer;
-        if(k == 0)
+
+        if (k == 0)
             Tanks[i, j, k].Ctrl.init();
         else
             Tanks[i, j, k].Ctrl.init(Tanks[i, j, 0].Ctrl.NN);
+
+        if (loadResults)
+            Tanks[i, j, 0].Ctrl.NN.Weights = LoadWeights();
 
         var scn = Tanks[i, j, k].GetComponent<ScannerHlpr>();
 
@@ -217,24 +220,27 @@ public class Test : MonoBehaviour {
 
 
 
-        for(int j = Tanks.GetLength(1); j-- > 0;) {
+        for (int j = Tanks.GetLength(1); j-- > 0;)
+        {
             //  Scorer best = Tanks[Tanks.GetLength(0) - 1, j, 0];
 
             float tm = 0;
-            for(int k = Tanks.GetLength(2); k-- > 0;) tm += ArenaDat[k + ArenaOff].ScoreMod;
+            for (int k = Tanks.GetLength(2); k-- > 0;) tm += ArenaDat[k + ArenaOff].ScoreMod;
 
             int bestI = Tanks.GetLength(0) - 1;
-  
+
             float[] arenaScores = new float[Tanks.GetLength(0)];
-            for(int i = Tanks.GetLength(0); i-- > 0;) {
+            for (int i = Tanks.GetLength(0); i-- > 0;)
+            {
                 //arenaScores[i] = float.MaxValue;
-                for(int k = Tanks.GetLength(2); k-- > 0;) {
-                     arenaScores[i] += Tanks[i, j, k].Score * ArenaDat[k + ArenaOff].ScoreMod;
+                for (int k = Tanks.GetLength(2); k-- > 0;)
+                {
+                    arenaScores[i] += Tanks[i, j, k].Score * ArenaDat[k + ArenaOff].ScoreMod;
 
                     //arenaScores[i] = Mathf.Min(arenaScores[i], Tanks[i, j, k].Score * ArenaDat[k + ArenaOff].ScoreMod)
                 }
-             //   Debug.Log("Scr " + arenaScores[i]);
-                if(arenaScores[i] > arenaScores[bestI])
+                //   Debug.Log("Scr " + arenaScores[i]);
+                if (arenaScores[i] > arenaScores[bestI])
                     bestI = i;
             }
 
@@ -242,42 +248,83 @@ public class Test : MonoBehaviour {
             float avg = arenaScores[bestI] / tm;
             Debug.Log("best " + avg);
 
-            
-            int bestK = 0;
-            for(int k = Tanks.GetLength(2); --k > 0;) {
-//                ArenaDat[k + ArenaOff].ScoreMod = 1;
-                if(Tanks[bestI, j, k].Score * ArenaDat[k + ArenaOff].ScoreMod > Tanks[bestI, j, bestK].Score * ArenaDat[bestK + ArenaOff].ScoreMod )
-                    bestK = k;
-            } 
 
-            for(int k = Tanks.GetLength(2); k-- > 0;) {
+            int bestK = 0;
+            for (int k = Tanks.GetLength(2); --k > 0;)
+            {
+                //                ArenaDat[k + ArenaOff].ScoreMod = 1;
+                if (Tanks[bestI, j, k].Score * ArenaDat[k + ArenaOff].ScoreMod > Tanks[bestI, j, bestK].Score * ArenaDat[bestK + ArenaOff].ScoreMod)
+                    bestK = k;
+            }
+
+            for (int k = Tanks.GetLength(2); k-- > 0;)
+            {
                 ArenaDat[k + ArenaOff].ScoreMod = Mathf.Lerp(ArenaDat[k + ArenaOff].ScoreMod, k == bestK ? 0.001f : 1, 0.05f);
             }
-            for(int i = Tanks.GetLength(0); i-- > 0;) {
+            for (int i = Tanks.GetLength(0); i-- > 0;)
+            {
                 var t = Tanks[i, j, 0];
-                if(t == best) continue;
+                if (t == best) continue;
                 geneticOptimisation(t, best);
                 var n1 = t.Ctrl.NN;
 
-                for(int k = Tanks.GetLength(2); --k > 0;) {
+                for (int k = Tanks.GetLength(2); --k > 0;)
+                {
                     var n2 = Tanks[i, j, k].Ctrl.NN;
-                    for(int layer = n1.Neurons.Length; --layer > 0;) {
+                    for (int layer = n1.Neurons.Length; --layer > 0;)
+                    {
                         n2.Neurons[layer].CopyTo(n1.Neurons[layer], 0);
                         n2.Synapsis[layer - 1].CopyTo(n1.Synapsis[layer - 1], 0);
                     }
                 }
             }
 
-            for(int k = Tanks.GetLength(2); k-- > 0;) {
+            for (int k = Tanks.GetLength(2); k-- > 0;)
+            {
                 var hl = ArenaDat[k + ArenaOff].HL;
-                if(hl == null) continue;
+                if (hl == null) continue;
                 hl.parent = Tanks[bestI, j, k].Motor.Trnsfrm;
                 hl.localPosition = Vector3.zero;
                 hl.localRotation = Quaternion.identity;
             }
+
+            if (SaveResults)
+            {
+                StoreWeights(best.Ctrl.NN.Weights);
+                SaveResults = false;
+            }
         }
         reset();
     }
+
+    #region Zeeshan's Stuff
+    void StoreWeights(float[] weights)
+    {
+        TextWriter write = new StreamWriter("weights.txt");
+        for (int i = 0; i < weights.Length; i++)
+        {
+            if (i == 0)
+                write.Write(weights[i]);
+            else
+                write.Write("," + weights[i]);
+        }
+        write.Close();
+    }
+
+    float[] LoadWeights()
+    {
+        TextReader read = new StreamReader("weights.txt");
+        string[] str = read.ReadToEnd().Split(',');
+        read.Close();
+        float[] weights = new float[str.Length];
+        for (int i = 0; i < weights.Length; i++)
+        {
+            weights[i] = float.Parse(str[i]);
+        }
+        return weights;
+    }
+
+    #endregion
 
     //todo - class-ify optimiser so it can haz parameters and not look shit  -- also, ya know, actually do it properly
     void geneticOptimisation(Scorer t1, Scorer t2) {

@@ -93,8 +93,6 @@ public class TankMotor : MonoBehaviour {
         LayerMask = (1 << l) | (1 << 31); 
     }
 
-    public bool UseJimCast = true;
-
     public Vector2 Pos;
     public float AngVel;
 
@@ -117,21 +115,6 @@ public class TankMotor : MonoBehaviour {
 
             r.Dir = Trnsfrm.TransformDirection(r.ODir);
         }
-        /*if(Tst != null) UseJimCast = Tst.UseJimCast;
-        if(UseJimCast) {
-          //  ScanH.proc();
-        } else {
-            foreach(var r in Scanner) {
-                var hit = Physics2D.Raycast(pos, Trnsfrm.TransformDirection(r.ODir), r.RangeMod * BaseRange, LayerMask);
-                if(hit.collider != null) {
-
-                    r.Out_Dis = hit.fraction;
-                    //if is other tank...
-                    //...do stuff
-                } else
-                    r.Out_Dis = 1;
-            }
-        }*/
 
         RightMtr = Mathf.Lerp(RightMtr, In_RightMv, (Mathf.Abs(RightMtr) > In_RightMv * Mathf.Sign(RightMtr) ? DeAcceleration : Acceleration) * Time.deltaTime);
         LeftMtr = Mathf.Lerp(LeftMtr, In_LeftMv, (Mathf.Abs(LeftMtr) > In_LeftMv * Mathf.Sign(LeftMtr) ? DeAcceleration : Acceleration) * Time.deltaTime);
