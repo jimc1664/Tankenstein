@@ -15,8 +15,9 @@ public class AiTankController : MonoBehaviour {
         Motor = GetComponent<TankMotor>();
 
         Input = new float[4 + Motor.Scanner.Count*2];
-        if(!Test.IsTesting)
-            init();
+        if(!Test.IsTesting) {
+            init( GetComponents<AIConfig>() );
+        }
         Sys.get().add(this);
     }
     void OnDisable() {
@@ -24,22 +25,68 @@ public class AiTankController : MonoBehaviour {
             Sys.get().Ais.Remove(this);
     }
 
-    public void init() {
+    public void init( AIConfig[] aic  ) {
 
-        int[] layers = { Input.Length, 8, 4 };
-        try {
-            var r = Random.value; //lazy..
-            NN = new NeuralNetwork.Network(layers, true, Random.seed);
-            if(loadWeight) {
-                NN.Weights = LoadWeights();         
+        if( aic ==null || aic.Length == 0 ) { //old 
+            int[] layers = { Input.Length, 8, 4 };
+            try {
+                var r = Random.value; //lazy..
+                NN = new NeuralNetwork.Network(layers, true, Random.seed);
+                if(loadWeight) {
+                    NN.Weights = LoadWeights();
+                }
+            } catch(System.Exception e) {
+                Debug.LogError("NN err: " + e.Message);
             }
-        } catch(System.Exception e) {
-            Debug.LogError("NN err: " + e.Message);
+        } else {
+
+            int mxLayer = -1;
+            foreach(var c in aic) {
+                mxLayer = Mathf.Max(mxLayer, c.Layers.Count + c.StartLayer);
+            }
+
+            int[] layers = new int[mxLayer +1];
+
+            layers[0] = Input.Length;
+            layers[mxLayer] = 4;
+
+
+            foreach(var c in aic) {
+                if(c.enabled)
+                    for(int i = c.Layers.Count; i-- > 0;) {
+                        c.Layers[i].Ni1 = layers[c.StartLayer + i];
+                        layers[c.StartLayer + i] += c.Layers[i].Cnt;
+                    }
+            }
+
+            Debug.Log("lc  " + layers.Length);
+
+            foreach(int i in layers) {
+                Debug.Log("  " + i);
+            }
+
+          //  try {
+                var r = Random.value; //lazy..
+                NN = new NeuralNetwork.Network(layers, Random.seed);
+
+
+                foreach(var c in aic) {
+                    if( c.enabled )
+                        c.init(NN, Motor.Scanner.Count);
+                }
+
+                var output = NN.Compute(Input);
+                /*if(loadWeight) {
+                    NN.Weights = LoadWeights();
+                } */
+            //} catch(System.Exception e) {
+
+             //   Debug.LogError("NN err 1: " + e.Message);
+           // }
         }
     }
 
-    float[] LoadWeights()
-    {
+    float[] LoadWeights() {
 
         TextReader read = new StreamReader("weights.txt");
         string[] str = read.ReadToEnd().Split(',');
@@ -57,6 +104,8 @@ public class AiTankController : MonoBehaviour {
         //NN = nn;
         NN = new NeuralNetwork.Network(nn);
     }
+
+
 
     public void aFixedUpdate() {
         int inI = 0;

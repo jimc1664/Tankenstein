@@ -40,6 +40,7 @@ namespace NeuralNetwork
             }
         }
 
+
         public static float LogisticSigmoid(float values)
         {
             return 1.0f / (1.0f + Convert.ToSingle(Math.Exp(-values)));

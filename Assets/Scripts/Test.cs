@@ -38,6 +38,9 @@ public class Test : MonoBehaviour {
 
     public static bool IsTesting = false;
 
+    AIConfig[] Config;
+
+
     void initTank( int i, int j, int k ) {
         if( Vs && (i &1) != 0  ) 
             Tanks[i, j, k] = Instantiate(TankFab2).AddComponent(ScoreType ) as Scorer;
@@ -45,12 +48,15 @@ public class Test : MonoBehaviour {
             Tanks[i, j, k] = Instantiate(TankFab).AddComponent(ScoreType) as Scorer;
 
         if (k == 0)
-            Tanks[i, j, k].Ctrl.init();
+            Tanks[i, j, k].Ctrl.init(Config );
         else
             Tanks[i, j, k].Ctrl.init(Tanks[i, j, 0].Ctrl.NN);
 
-        if(loadResults) {
-            Tanks[i, j, 0].Ctrl.NN.Weights = LoadWeights();
+
+        if(Config == null || Config.Length == 0 ) {
+            if(loadResults) {
+                Tanks[i, j, 0].Ctrl.NN.Weights = LoadWeights();
+            }
         }
 
         var scn = Tanks[i, j, k].GetComponent<ScannerHlpr>();
@@ -62,7 +68,7 @@ public class Test : MonoBehaviour {
     Scorer Scrr;
 
     void OnEnable() {
-
+        Config = GetComponents<AIConfig>();
         ScoreType = (Scrr=GetComponent<Scorer>()).GetType();        
 
         foreach( var t in FindObjectsOfType<AiTankController>() ) 
@@ -80,6 +86,8 @@ public class Test : MonoBehaviour {
             }
         reset();
         IsTesting = true;
+
+        
 
     }
     void Awake() {
@@ -280,10 +288,8 @@ public class Test : MonoBehaviour {
 
                 for(int k = Tanks.GetLength(2); --k > 0;) {
                     var n2 = Tanks[i, j, k].Ctrl.NN;
-                    for(int layer = n1.Neurons.Length; --layer > 0;) {
-                        n2.Neurons[layer].CopyTo(n1.Neurons[layer], 0);
-                        n2.Synapsis[layer - 1].CopyTo(n1.Synapsis[layer - 1], 0);
-                    }
+                    n2.copyTo(n1);
+  
                 }
             }
 
@@ -338,41 +344,37 @@ public class Test : MonoBehaviour {
         NeuralNetwork.Network n1 = t1.Ctrl.NN, n2 = t2.Ctrl.NN;
 
         if(n1 != n2)
-            for(int layer = n1.Neurons.Length; --layer > 0;) { 
-                n2.Neurons[layer].CopyTo(n1.Neurons[layer], 0);
-                n2.Synapsis[layer-1].CopyTo(n1.Synapsis[layer-1], 0);
-            }
+            n2.copyTo(n1);
+        /*      
+      for(int layer = n1.Neurons.Length; --layer > 0; ) {
+          int nl = n1.Neurons[layer].Length;
+          for(int ri = Mathf.CeilToInt((float)nl * Random.Range(0.7f, 0.9f)  ); ri-- > 0; ) {
+              int ni = Random.Range(0, nl);  //chance of duplicate - i suspect tracking this would be more cost than worth
+              n1.Neurons[layer][ni].bias = n2.Neurons[layer][ni].bias;
+          }
+          var s1 = n1.Synapsis[layer - 1];
+          var s2 = n2.Synapsis[layer - 1];
+          int sl = s1.Length;
+          for(int ri = Mathf.CeilToInt((float)s1.Length * Random.Range(0.7f, 0.9f) ); ri-- > 0; ) {
+              int si = Random.Range(0, s1.Length);  //chance of duplicate - i suspect tracking this would be more cost than worth
+              s1[si].weight = s2[si].weight;
+          }
+      } */
 
-              /*      
-            for(int layer = n1.Neurons.Length; --layer > 0; ) {
-                int nl = n1.Neurons[layer].Length;
-                for(int ri = Mathf.CeilToInt((float)nl * Random.Range(0.7f, 0.9f)  ); ri-- > 0; ) {
-                    int ni = Random.Range(0, nl);  //chance of duplicate - i suspect tracking this would be more cost than worth
-                    n1.Neurons[layer][ni].bias = n2.Neurons[layer][ni].bias;
-                }
-                var s1 = n1.Synapsis[layer - 1];
-                var s2 = n2.Synapsis[layer - 1];
-                int sl = s1.Length;
-                for(int ri = Mathf.CeilToInt((float)s1.Length * Random.Range(0.7f, 0.9f) ); ri-- > 0; ) {
-                    int si = Random.Range(0, s1.Length);  //chance of duplicate - i suspect tracking this would be more cost than worth
-                    s1[si].weight = s2[si].weight;
-                }
-            } */
-       
-        
-        for(int layer = n1.Neurons.Length; --layer > 0; ) {
-            int nl = n1.Neurons[layer].Length;
-            for(int ri = Mathf.CeilToInt((float)nl * Random.Range(0.0f, 0.1f)); ri-- > 0; ) {
-                int ni = Random.Range(0, nl);  //chance of duplicate - i suspect tracking this would be more cost than worth
-                var m = Random.Range(-1.0f, 1.0f);
-                if(Random.value > 0.9f) {
-                    n1.Neurons[layer][ni].bias = m;
-                } else {
-                    m *= Mathf.Abs(m);
-                    n1.Neurons[layer][ni].bias = NeuralNetwork.ActivationMethods.HyperbolidTangent(n1.Neurons[layer][ni].bias + m *0.05f);
-                }
+        int nl = n1.Neurons.Length;
+        for(int ri = Mathf.CeilToInt((float)nl * Random.Range(0.0f, 0.1f)); ri-- > 0;) {  //todo -- this now affecting input biases (does nothing)
+            int ni = Random.Range(0, nl);  //chance of duplicate - i suspect tracking this would be more cost than worth
+            var m = Random.Range(-1.0f, 1.0f);
+            if(Random.value > 0.9f) {
+                n1.Neurons[ni].bias = m;
+            } else {
+                m *= Mathf.Abs(m);
+                n1.Neurons[ni].bias = n1.Neurons[ni].bias + m * 0.05f; //NeuralNetwork.ActivationMethods.HyperbolidTangent(
             }
-            var s1 = n1.Synapsis[layer - 1];
+        }
+        for(int layer = n1.Synapsis.Length; layer-- > 0; ) {
+
+            var s1 = n1.Synapsis[layer];
             int sl = s1.Length;
             for(int ri = Mathf.CeilToInt((float)s1.Length * Random.Range(0.0f, 0.1f)); ri-- > 0; ) {
                 int si = Random.Range(0, s1.Length);  //chance of duplicate - i suspect tracking this would be more cost than worth
@@ -381,7 +383,7 @@ public class Test : MonoBehaviour {
                     s1[si].weight = m;
                 } else {
                     m *= Mathf.Abs(m);
-                    s1[si].weight = NeuralNetwork.ActivationMethods.HyperbolidTangent(s1[si].weight + m * 0.05f);
+                    s1[si].weight = s1[si].weight + m * 0.05f; // NeuralNetwork.ActivationMethods.HyperbolidTangent(
                 }
             }
         }
