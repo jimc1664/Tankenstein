@@ -20,6 +20,10 @@ public class ScannerHlpr : MonoBehaviour {
         public int Ri;
     }
     List<ObstacleEntry> Obs;
+    
+    
+
+
 
     /*
     public Vector2 ClosestIntersection(float cx, float cy, float radius,
@@ -111,7 +115,6 @@ public class ScannerHlpr : MonoBehaviour {
         }
     }
 
-
     public static void FindIntersection(
           Vector2 _p1, Vector2 d1, Vector2 _p2, Vector2 d2,
           out Vector2 intersection,
@@ -184,33 +187,137 @@ public class ScannerHlpr : MonoBehaviour {
 
 
 
-    bool cast( Arena.Obstacle obs, TankMotor.Ray r ) {
+    bool cast( TankMotor.Ray r, Vector2 pos, float rad, Arena.Obstacle obs  ) {
         Vector2 tan = new Vector2(r.Dir.y, -r.Dir.x);
 
 
         Vector2 intersection; float t1, t2;
-        FindIntersection(Motor.Pos, r.Dir, obs.Pos, tan,
+        FindIntersection(Motor.Pos, r.Dir, pos, tan,
             out intersection,
             out t1, out t2);
 
         
-        if(t1 < 0 || Mathf.Abs(t2) > obs.Rad) return false;
-        if( t1 - obs.Rad > r.RangeMod * Motor.BaseRange *r.Out_Dis ) return true;
+        if(t1 < 0 || Mathf.Abs(t2) > rad) return false;
+        if(t1 - rad > r.RangeMod * Motor.BaseRange * r.Out_Dis) return true;
 
-        float pen = Mathf.Sqrt(obs.Rad * obs.Rad - t2 * t2);
-        if(t1 - pen > r.RangeMod * Motor.BaseRange * r.Out_Dis ) return true;
+        float pen = Mathf.Sqrt(rad * rad - t2 * t2);
+        if(t1 - pen > r.RangeMod * Motor.BaseRange * r.Out_Dis) return true;
 
-        obs.cast(Motor, r);
 
+        if(obs != null) {
+            obs.cast(Motor, r);
+        } else {
+            r.Out_Opponent = 1;
+            r.Out_Dis = (t1 - pen) / (r.RangeMod * Motor.BaseRange );
+        }
         return true; 
     }
 
+
+    void sub( Vector2 dir, Vector2 pos, float mag, ref int oRi, float rad, Arena.Obstacle  obs ) {
+
+
+        //int oldRi = oRi;
+        fixRi(dir, ref oRi);
+
+
+        /*if(obs == null) {
+            Debug.Log("mag " + mag + "  dir " + dir + "  oldRi " + oldRi + "  oRi " + oRi);
+            return;
+        }*/
+        if(mag < rad  && obs != null ) {
+
+            Motor.Scanner[oRi].Out_Dis = 0;
+            for(int ri = oRi, maxIter = Motor.Scanner.Count; ;) {
+                ri = (ri + 1) % Motor.Scanner.Count;
+                var r = Motor.Scanner[ri];
+                float dt = Vector2.Dot(r.Dir, dir);
+                if(dt > 0.0f)
+                    obs.cast(Motor, r);
+                else
+                    break;
+
+                if(maxIter-- < 0) {
+                    Debug.LogError("stuck");
+                    return;
+                }
+            }
+            for(int ri = oRi, maxIter = Motor.Scanner.Count; ;) {
+                ri = (ri + Motor.Scanner.Count - 1) % Motor.Scanner.Count;
+                var r = Motor.Scanner[ri];
+                float dt = Vector2.Dot(r.Dir, dir);
+                if(dt > 0.0f)
+                    obs.cast(Motor, r);
+                else
+                    break;
+                if(maxIter-- < 0) {
+                    Debug.LogError("stuck");
+                    return;
+                }
+            }
+
+            return;
+        }
+
+        // Gizmos.DrawLine(Motor.Pos, Motor.Pos + dir);
+        //Gizmos.color = Color.black;
+        //Gizmos.DrawLine(Motor.Pos, Motor.Pos + Motor.Scanner[o.Ri].Dir *4.0f );
+
+
+        cast( Motor.Scanner[oRi], pos, rad, obs );
+        for(int ri = oRi, maxIter = Motor.Scanner.Count; ;) {
+            ri = (ri + 1) % Motor.Scanner.Count;
+            if(!cast( Motor.Scanner[ri], pos, rad, obs)) break;
+            if(maxIter-- < 0) {
+                Debug.LogError("stuck");
+                return;
+            }
+        }
+        for(int ri = oRi, maxIter = Motor.Scanner.Count; ;) {
+            ri = (ri + Motor.Scanner.Count - 1) % Motor.Scanner.Count;
+            if(!cast( Motor.Scanner[ri], pos, rad, obs)) break;
+
+            if(maxIter-- < 0) {
+                Debug.LogError("stuck");
+                return;
+            }
+        }
+
+
+
+        /* foreach( var r in Motor.Scanner) {
+             Vector2 tan = new Vector2(r.Dir.y, -r.Dir.x);
+
+
+             Vector2 intersection; float t1, t2;
+             FindIntersection(Motor.Pos, r.Dir, obs.Pos, tan,
+                 out  intersection,
+                 out  t1, out  t2);
+             if( t1 < 0 || Mathf.Abs(t2) > obs.Rad || t1-obs.Rad > r.RangeMod * Motor.BaseRange) continue;
+
+             float pen = Mathf.Sqrt(obs.Rad * obs.Rad - t2 * t2);
+             if(t1 - pen > r.RangeMod * Motor.BaseRange) continue;
+             //|| t1 > r.RangeMod * Motor.BaseRange
+//                Debug.Log("t1 " + t1 + "  t2 " + t2 + "   obs.Rad " + obs.Rad + "  r.RangeMod * Motor.BaseRange " + (r.RangeMod * Motor.BaseRange));
+             Gizmos.color = Color.blue;
+             Gizmos.DrawLine(obs.Pos, intersection);
+
+             intersection = Motor.Pos + r.Dir * (t1 - pen);
+             Gizmos.color = Color.red;
+             Gizmos.DrawLine(Motor.Pos, intersection);
+
+             Gizmos.color = Color.black;
+             Gizmos.DrawLine(Motor.Pos, Motor.Pos + r.Dir*4);
+         } */
+    }
+    int OppRi =0;
     public void proc() {
 
 
         
         foreach(var r in Motor.Scanner) {
             r.Out_Dis = 1;
+            r.Out_Opponent = 0;
         }
         for(int i = 0; i < Obs.Count; i++ ) {
             var o = Obs[i];
@@ -218,97 +325,19 @@ public class ScannerHlpr : MonoBehaviour {
             float mag = vec.magnitude;
             var dir = vec / mag;
             o.Dis = mag - o.Obs.Rad;
-            if( i > 0 && Obs[i-1].Dis > o.Dis ) {  //soft sorting
+            if(i > 0 && Obs[i - 1].Dis > o.Dis) {  //soft sorting
                 Obs[i] = Obs[i - 1];
                 Obs[i - 1] = o;
             }
-         
-            fixRi(dir, ref o.Ri);
-         // Debug.Log("mag " + mag);
-            if( mag < o.Obs.Rad ) {
 
-                Motor.Scanner[o.Ri].Out_Dis = 0;
-                for(int ri = o.Ri, maxIter = Motor.Scanner.Count; ;) {
-                    ri = (ri + 1) % Motor.Scanner.Count;
-                    var r = Motor.Scanner[ri];
-                    float dt = Vector2.Dot(r.Dir, dir);
-                    if(dt > 0.0f)
-                        o.Obs.cast(Motor, r);
-                    else
-                        break;
-
-                    if(maxIter-- < 0) {
-                        Debug.LogError("stuck");
-                        return;
-                    }
-                }
-                for(int ri = o.Ri, maxIter = Motor.Scanner.Count; ;) {
-                    ri = (ri + Motor.Scanner.Count - 1) % Motor.Scanner.Count;
-                    var r = Motor.Scanner[ri];
-                    float dt = Vector2.Dot(r.Dir, dir);
-                    if(dt > 0.0f)
-                        o.Obs.cast(Motor, r);
-                    else
-                        break;
-                    if(maxIter-- < 0) {
-                        Debug.LogError("stuck");
-                        return;
-                    }
-                }
-
-                continue;
-            }
-             
-            // Gizmos.DrawLine(Motor.Pos, Motor.Pos + dir);
-            //Gizmos.color = Color.black;
-            //Gizmos.DrawLine(Motor.Pos, Motor.Pos + Motor.Scanner[o.Ri].Dir *4.0f );
-
-          
-            cast(o.Obs, Motor.Scanner[o.Ri]);
-            for(int ri = o.Ri, maxIter = Motor.Scanner.Count; ;) {
-                ri = (ri + 1) % Motor.Scanner.Count;
-                if(!cast(o.Obs, Motor.Scanner[ri])) break;
-                if(maxIter-- < 0) {
-                    Debug.LogError("stuck");
-                    return;
-                }
-            }
-            for(int ri = o.Ri, maxIter = Motor.Scanner.Count; ;) {
-                ri = (ri + Motor.Scanner.Count - 1) % Motor.Scanner.Count;
-                if(!cast(o.Obs, Motor.Scanner[ri])) break;
-
-                if(maxIter-- < 0) {
-                    Debug.LogError("stuck");
-                    return;
-                }
-            }
-
-
-
-            /* foreach( var r in Motor.Scanner) {
-                 Vector2 tan = new Vector2(r.Dir.y, -r.Dir.x);
-
-
-                 Vector2 intersection; float t1, t2;
-                 FindIntersection(Motor.Pos, r.Dir, obs.Pos, tan,
-                     out  intersection,
-                     out  t1, out  t2);
-                 if( t1 < 0 || Mathf.Abs(t2) > obs.Rad || t1-obs.Rad > r.RangeMod * Motor.BaseRange) continue;
-
-                 float pen = Mathf.Sqrt(obs.Rad * obs.Rad - t2 * t2);
-                 if(t1 - pen > r.RangeMod * Motor.BaseRange) continue;
-                 //|| t1 > r.RangeMod * Motor.BaseRange
- //                Debug.Log("t1 " + t1 + "  t2 " + t2 + "   obs.Rad " + obs.Rad + "  r.RangeMod * Motor.BaseRange " + (r.RangeMod * Motor.BaseRange));
-                 Gizmos.color = Color.blue;
-                 Gizmos.DrawLine(obs.Pos, intersection);
-
-                 intersection = Motor.Pos + r.Dir * (t1 - pen);
-                 Gizmos.color = Color.red;
-                 Gizmos.DrawLine(Motor.Pos, intersection);
-
-                 Gizmos.color = Color.black;
-                 Gizmos.DrawLine(Motor.Pos, Motor.Pos + r.Dir*4);
-             } */
+            sub(dir, o.Obs.Pos, mag, ref o.Ri, o.Obs.Rad, o.Obs);
+        }
+        if(Motor.Opponent != null) {
+            var vec = Motor.Opponent.Pos - Motor.Pos;
+            float mag = vec.magnitude;
+            var dir = vec / mag;
+            
+            sub(dir, Motor.Opponent.Pos, mag, ref OppRi, Motor.Opponent.Rad, null );
         }
     }
     void OnDrawGizmos () {

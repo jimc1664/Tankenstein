@@ -24,7 +24,7 @@ public class Scorer : MonoBehaviour {
     }
 
     public virtual void aFixedUpdate() { }
-    public virtual void reset(Transform t, Scorer s, Test.ArenaData ad) {
+    public virtual void reset(Transform t, Scorer s, Test.ArenaData ad, int layer ) {
 
     }
 }

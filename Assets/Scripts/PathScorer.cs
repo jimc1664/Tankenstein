@@ -27,7 +27,7 @@ public class PathScorer : Scorer  {
 
     }
 
-    public override void reset(Transform t, Scorer _s, Test.ArenaData ad ) {
+    public override void reset(Transform t, Scorer _s, Test.ArenaData ad, int layer) {
         var s = _s as PathScorer;
 
         RotMod = s.RotMod;
@@ -35,7 +35,7 @@ public class PathScorer : Scorer  {
 
         Target = ad.S2;
 
-        Motor.reset(t);
+        Motor.reset(t, layer);
 
 
         AV = RScore = MaxScore = Score = 0;

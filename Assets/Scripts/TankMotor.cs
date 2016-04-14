@@ -16,6 +16,8 @@ public class TankMotor : MonoBehaviour {
     public GameObject BulletFab;
     public Transform Turret, Barrel;
 
+    public TankMotor Opponent;
+    public float Rad;
 
     public float In_LeftMv = 0, In_RightMv = 0, In_TurretRot = 0, In_Fire = 0;
     public Vector2 Out_Vel, Out_TurretDir;
@@ -24,6 +26,7 @@ public class TankMotor : MonoBehaviour {
     [System.Serializable]
     public class Ray {
         public float Out_Dis;
+        public float Out_Opponent;
         public float RangeMod;
         public Vector2 Dir;
         public Vector2 ODir;
@@ -60,9 +63,9 @@ public class TankMotor : MonoBehaviour {
         Trnsfrm = transform;
         Body = GetComponent<Rigidbody2D>();
         ScanH = GetComponent<ScannerHlpr>();
-        setLayer(gameObject.layer);
 
-        reset(Trnsfrm);
+        Rad = GetComponent<CircleCollider2D>().radius;
+        reset(Trnsfrm, gameObject.layer);
 
         Tst = FindObjectOfType<Test>();
 
@@ -73,7 +76,7 @@ public class TankMotor : MonoBehaviour {
             Sys.get().Tanks.Remove(this);
     }
 
-    public void reset( Transform t ) {
+    public void reset( Transform t, int layer ) {
         Trnsfrm.position = t.position;
         Trnsfrm.rotation = t.rotation;
 
@@ -83,7 +86,7 @@ public class TankMotor : MonoBehaviour {
         RightMtr = LeftMtr = TurretAngle = RoFTimer = 0;
         In_LeftMv = In_RightMv = In_TurretRot = In_Fire = 0;
 
-
+        setLayer(layer);
     }
 
     public void setLayer( int l ) {
@@ -175,7 +178,10 @@ public class TankMotor : MonoBehaviour {
             r.Dir = Trnsfrm.TransformDirection(r.ODir);
             Gizmos.color = Color.blue;            
             Gizmos.DrawLine( Trnsfrm.position, Trnsfrm.TransformPoint( r.ODir*r.RangeMod*BaseRange) );
-            Gizmos.color = Color.green;
+            if( r.Out_Opponent != 0 )
+                Gizmos.color = Color.red;
+            else
+                Gizmos.color = Color.green;
             Gizmos.DrawLine(Trnsfrm.position, Trnsfrm.TransformPoint(r.ODir * r.RangeMod * BaseRange * r.Out_Dis));
         }
     }

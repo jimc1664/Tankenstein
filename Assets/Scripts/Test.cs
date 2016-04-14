@@ -7,7 +7,7 @@ public class Test : MonoBehaviour {
     public int GenerationCounter = 0;
 
 
-    public GameObject TankFab;
+    public GameObject TankFab, TankFab2;
 
     public int ArenaCnt = 1;
     public int ArenaOff = 0;
@@ -39,16 +39,19 @@ public class Test : MonoBehaviour {
     public static bool IsTesting = false;
 
     void initTank( int i, int j, int k ) {
-
-        Tanks[i, j, k] = Instantiate(TankFab).AddComponent(ScoreType ) as Scorer;
+        if( Vs && (i &1) != 0  ) 
+            Tanks[i, j, k] = Instantiate(TankFab2).AddComponent(ScoreType ) as Scorer;
+        else
+            Tanks[i, j, k] = Instantiate(TankFab).AddComponent(ScoreType) as Scorer;
 
         if (k == 0)
             Tanks[i, j, k].Ctrl.init();
         else
             Tanks[i, j, k].Ctrl.init(Tanks[i, j, 0].Ctrl.NN);
 
-        if (loadResults)
+        if(loadResults) {
             Tanks[i, j, 0].Ctrl.NN.Weights = LoadWeights();
+        }
 
         var scn = Tanks[i, j, k].GetComponent<ScannerHlpr>();
 
@@ -192,8 +195,24 @@ public class Test : MonoBehaviour {
 
         for(int k = ArenaCnt; k-- > 0;)
             for(int j = StrainCnt; j-- > 0;)
-                for(int i = Sample; i-- > 0;)
-                    Tanks[i, j,k].reset(ArenaDat[k+ ArenaOff].S1, Scrr, ArenaDat[k+ ArenaOff] );
+                for(int i = Sample; i-- > 0;) {
+                    if(Vs) {
+
+                        if((i & 1) == 0) {
+                            Tanks[i, j, k].reset(ArenaDat[k + ArenaOff].S1, Scrr, ArenaDat[k + ArenaOff], i);
+                            Tanks[i, j, k].Motor.Opponent = null;
+                            if(i + 1 < Sample) {
+                                Tanks[i, j, k].Motor.Opponent = Tanks[i + 1, j, k].Motor;
+                                Tanks[i +1, j, k].Motor.Opponent = Tanks[i, j, k].Motor;
+                            }
+                        } else {
+                            Tanks[i, j, k].reset(ArenaDat[k + ArenaOff].S2, Scrr, ArenaDat[k + ArenaOff], i);
+                            Tanks[i, j, k].Motor.Opponent = null;
+                        }
+                    } else
+                        Tanks[i, j, k].reset(ArenaDat[k + ArenaOff].S1, Scrr, ArenaDat[k + ArenaOff], 0);
+
+                }
 
         Timer = MaxTime;
     }
@@ -212,35 +231,29 @@ public class Test : MonoBehaviour {
     //  Scorer LastBest = null;
     public void aFixedUpdate() {
 
-
-
         if((Timer -= Time.deltaTime) > 0) return;
 
         GenerationCounter++;
 
 
-
-        for (int j = Tanks.GetLength(1); j-- > 0;)
-        {
+        for(int j = Tanks.GetLength(1); j-- > 0;) {
             //  Scorer best = Tanks[Tanks.GetLength(0) - 1, j, 0];
 
             float tm = 0;
-            for (int k = Tanks.GetLength(2); k-- > 0;) tm += ArenaDat[k + ArenaOff].ScoreMod;
+            for(int k = Tanks.GetLength(2); k-- > 0;) tm += ArenaDat[k + ArenaOff].ScoreMod;
 
             int bestI = Tanks.GetLength(0) - 1;
 
             float[] arenaScores = new float[Tanks.GetLength(0)];
-            for (int i = Tanks.GetLength(0); i-- > 0;)
-            {
+            for(int i = Tanks.GetLength(0); i-- > 0;) {
                 //arenaScores[i] = float.MaxValue;
-                for (int k = Tanks.GetLength(2); k-- > 0;)
-                {
+                for(int k = Tanks.GetLength(2); k-- > 0;) {
                     arenaScores[i] += Tanks[i, j, k].Score * ArenaDat[k + ArenaOff].ScoreMod;
 
                     //arenaScores[i] = Mathf.Min(arenaScores[i], Tanks[i, j, k].Score * ArenaDat[k + ArenaOff].ScoreMod)
                 }
                 //   Debug.Log("Scr " + arenaScores[i]);
-                if (arenaScores[i] > arenaScores[bestI])
+                if(arenaScores[i] > arenaScores[bestI])
                     bestI = i;
             }
 
@@ -250,46 +263,39 @@ public class Test : MonoBehaviour {
 
 
             int bestK = 0;
-            for (int k = Tanks.GetLength(2); --k > 0;)
-            {
+            for(int k = Tanks.GetLength(2); --k > 0;) {
                 //                ArenaDat[k + ArenaOff].ScoreMod = 1;
-                if (Tanks[bestI, j, k].Score * ArenaDat[k + ArenaOff].ScoreMod > Tanks[bestI, j, bestK].Score * ArenaDat[bestK + ArenaOff].ScoreMod)
+                if(Tanks[bestI, j, k].Score * ArenaDat[k + ArenaOff].ScoreMod > Tanks[bestI, j, bestK].Score * ArenaDat[bestK + ArenaOff].ScoreMod)
                     bestK = k;
             }
 
-            for (int k = Tanks.GetLength(2); k-- > 0;)
-            {
+            for(int k = Tanks.GetLength(2); k-- > 0;) {
                 ArenaDat[k + ArenaOff].ScoreMod = Mathf.Lerp(ArenaDat[k + ArenaOff].ScoreMod, k == bestK ? 0.001f : 1, 0.05f);
             }
-            for (int i = Tanks.GetLength(0); i-- > 0;)
-            {
+            for(int i = Tanks.GetLength(0); i-- > 0;) {
                 var t = Tanks[i, j, 0];
-                if (t == best) continue;
+                if(t == best) continue;
                 geneticOptimisation(t, best);
                 var n1 = t.Ctrl.NN;
 
-                for (int k = Tanks.GetLength(2); --k > 0;)
-                {
+                for(int k = Tanks.GetLength(2); --k > 0;) {
                     var n2 = Tanks[i, j, k].Ctrl.NN;
-                    for (int layer = n1.Neurons.Length; --layer > 0;)
-                    {
+                    for(int layer = n1.Neurons.Length; --layer > 0;) {
                         n2.Neurons[layer].CopyTo(n1.Neurons[layer], 0);
                         n2.Synapsis[layer - 1].CopyTo(n1.Synapsis[layer - 1], 0);
                     }
                 }
             }
 
-            for (int k = Tanks.GetLength(2); k-- > 0;)
-            {
+            for(int k = Tanks.GetLength(2); k-- > 0;) {
                 var hl = ArenaDat[k + ArenaOff].HL;
-                if (hl == null) continue;
+                if(hl == null) continue;
                 hl.parent = Tanks[bestI, j, k].Motor.Trnsfrm;
                 hl.localPosition = Vector3.zero;
                 hl.localRotation = Quaternion.identity;
             }
 
-            if (SaveResults)
-            {
+            if(SaveResults) {
                 StoreWeights(best.Ctrl.NN.Weights);
                 SaveResults = false;
             }
@@ -313,6 +319,7 @@ public class Test : MonoBehaviour {
 
     float[] LoadWeights()
     {
+        Debug.Log("loading?");
         TextReader read = new StreamReader("weights.txt");
         string[] str = read.ReadToEnd().Split(',');
         read.Close();

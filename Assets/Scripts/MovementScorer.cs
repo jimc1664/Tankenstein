@@ -42,9 +42,9 @@ public class MovementScorer : Scorer {
         //Score = Spacing;
     }
 
-    public override void reset(Transform t, Scorer _s, Test.ArenaData ad) {
+    public override void reset(Transform t, Scorer _s, Test.ArenaData ad, int layer) {
         var s = _s as MovementScorer;
-        Motor.reset(t);
+        Motor.reset(t, layer );
  
         for(int i = PosList.Length; i-- > 0;) {
             PosList[i] = Motor.Pos;

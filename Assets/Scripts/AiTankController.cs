@@ -14,7 +14,7 @@ public class AiTankController : MonoBehaviour {
     void OnEnable() {
         Motor = GetComponent<TankMotor>();
 
-        Input = new float[2 + Motor.Scanner.Count];
+        Input = new float[4 + Motor.Scanner.Count*2];
         if(!Test.IsTesting)
             init();
         Sys.get().add(this);
@@ -30,8 +30,9 @@ public class AiTankController : MonoBehaviour {
         try {
             var r = Random.value; //lazy..
             NN = new NeuralNetwork.Network(layers, true, Random.seed);
-            if (loadWeight)
-                NN.Weights = LoadWeights();
+            if(loadWeight) {
+                NN.Weights = LoadWeights();         
+            }
         } catch(System.Exception e) {
             Debug.LogError("NN err: " + e.Message);
         }
@@ -39,6 +40,7 @@ public class AiTankController : MonoBehaviour {
 
     float[] LoadWeights()
     {
+
         TextReader read = new StreamReader("weights.txt");
         string[] str = read.ReadToEnd().Split(',');
         read.Close();
@@ -47,6 +49,7 @@ public class AiTankController : MonoBehaviour {
         {
             weights[i] = float.Parse(str[i]);
         }
+
         return weights;
     }
 
@@ -59,7 +62,10 @@ public class AiTankController : MonoBehaviour {
         int inI = 0;
         Input[inI++] = Motor.Out_Vel.x;
         Input[inI++] = Motor.Out_Vel.y;
+        Input[inI++] = Motor.Out_TurretDir.x;
+        Input[inI++] = Motor.Out_TurretDir.y;
         foreach(var r in Motor.Scanner) {
+            Input[inI + Motor.Scanner.Count] = r.Out_Opponent;
             Input[inI++] = r.Out_Dis;
         }
 
@@ -67,6 +73,8 @@ public class AiTankController : MonoBehaviour {
             var output = NN.Compute(Input);
             Motor.In_LeftMv = output[0];
             Motor.In_RightMv = output[1];
+            Motor.In_Fire = output[2];
+            Motor.In_TurretRot = output[3];
         } catch(System.Exception e) {
             Debug.LogError("NN err: " + e.Message);
         }
